@@ -25,12 +25,29 @@ const Pitch = z.object({
       "One short line that sets up the pitch — e.g. 'AI safety needs durable, observable infrastructure.'",
     ),
   cta: z.string().describe("≤ 4 words, verb-first"),
+  primaryOutcome: z
+    .enum([
+      "ship-faster",
+      "no-devops",
+      "lower-infra-cost",
+      "better-dx",
+      "ai-features-faster",
+      "global-performance",
+    ])
+    .describe(
+      "The single business outcome the pitch is built around. Each section ties back to this outcome.",
+    ),
+  outcomeRationale: z
+    .string()
+    .describe(
+      "One sentence on why this outcome is the right lead for this specific company — reference their stack or stage.",
+    ),
   sections: z
     .array(PitchSection)
     .min(3)
     .max(3)
     .describe(
-      "Exactly three sections, each pitching a different Vercel primitive most relevant to this company.",
+      "Exactly three sections. Each names a Vercel primitive AND explicitly closes by stating how it advances the chosen primaryOutcome.",
     ),
   migrationAngle: z
     .enum(["already-on-vercel", "from-aws", "from-cloudflare", "greenfield"])
@@ -57,18 +74,37 @@ export default defineTool({
     const { object } = await generateObject({
       model: MODEL,
       schema: Pitch,
-      system: `You are a Vercel solutions engineer writing a custom landing page for a sales meeting. Your reader is technical (CTO, VP Eng, platform engineer). Every section must reference the specific company by name and tie one Vercel primitive directly to what they do.
+      system: `You are a Vercel solutions engineer writing a custom landing page for a sales meeting. Your reader is technical but their decision-making lens is **business outcomes**, not primitives. The pitch leads with an outcome and uses the primitives as evidence.
 
-The Vercel primitives you can pitch:
-- AI Gateway — one API across providers, fallbacks, budgets, observable. Best for AI-native companies, model-heavy workloads.
-- Vercel Sandbox — Firecracker microVMs for AI-generated/untrusted code. Best for AI app builders, code-gen products, customer-facing dynamic apps.
-- Vercel Workflow — durable execution that survives function kills. Best for long-running agents, multi-step pipelines, payment flows.
-- Fluid Compute — active-CPU pricing, in-function concurrency. Best for I/O-heavy workloads (LLMs, external APIs).
-- v0 — text-to-component generation. Best for design-light teams, per-customer UI, fast prototyping.
-- Vercel Functions — framework-defined serverless. The baseline.
-- Edge / CDN — global delivery, anycast, instant invalidation. Best for content-heavy or latency-sensitive products.
+## Pick the lead outcome first
 
-Voice: confident, specific, low on adjectives. No "leverage", "empower", "unleash", "supercharge". Cite the company's actual stack and recent moves. Never fabricate.`,
+The pitch is built around exactly ONE primary outcome that matters most for this specific company:
+
+- **ship-faster** — for teams whose competitive edge is iteration speed. Best for early-stage startups, design-led companies, anyone deploying weekly+.
+- **no-devops** — for teams that don't want a platform-engineer hire. Best for under-20-engineer startups, founder-led tech orgs.
+- **lower-infra-cost** — for teams with growing infra spend. Best for I/O-heavy AI workloads where Fluid Compute's active-CPU pricing dominates the savings.
+- **better-dx** — for teams whose engineering hiring/retention depends on stack quality. Best for tools companies, dev-facing products, Series A+ where talent matters.
+- **ai-features-faster** — for AI-native companies. Best when the company is shipping LLM features and competing on velocity of new model integrations.
+- **global-performance** — for content/commerce/consumer where p95 latency dollars are visible.
+
+## Then choose THREE primitives that support that outcome
+
+Each section names a primitive AND closes with how it advances the chosen outcome. Don't pitch the primitive on its own — pitch what it lets the company *achieve*.
+
+Primitives you can name:
+- AI Gateway — one API across providers, fallbacks, budgets, observable.
+- Vercel Sandbox — Firecracker microVMs for AI-generated/untrusted code.
+- Vercel Workflow — durable execution that survives function kills.
+- Fluid Compute — active-CPU pricing, in-function concurrency for I/O-heavy work.
+- v0 — text-to-component generation.
+- Vercel Functions — framework-defined serverless, the baseline.
+- Edge / CDN — global delivery, anycast, instant invalidation.
+
+## Voice
+
+Confident, specific, low on adjectives. No "leverage", "empower", "unleash", "supercharge", "synergy", "next-generation". Cite the company's actual stack and recent moves. Never fabricate.
+
+The reader is in a live meeting with a Vercel AE; they don't need to learn what Vercel is — they need to see why the move is good for *their* business.`,
       prompt: `Company: ${input.companyName}
 What they do: ${input.oneLineDescription}
 Target audience: ${input.targetAudience}
@@ -76,10 +112,14 @@ Stack signals: ${input.stackSignals.join(", ") || "unknown"}
 Recent moves: ${input.recentMoves.join("; ") || "none captured"}
 Already on Vercel: ${input.alreadyOnVercel ? "yes" : "no / unknown"}
 
-Pick the three Vercel primitives most relevant to **this specific company**. If they're an AI company, that's almost certainly Gateway + Sandbox + Workflow. If they're a marketplace or content site, that's Edge + Functions + Fluid. Be opinionated.
+Step 1 — Decide the single primaryOutcome that matters most for *this* company. Be opinionated. An AI-native Series B picks ai-features-faster or lower-infra-cost. A growth-stage SaaS picks ship-faster or better-dx. A content company picks global-performance. A bootstrapped 5-person startup picks no-devops.
 
-If alreadyOnVercel is true, the pitch is "go deeper into the primitives you're not using yet."
-If alreadyOnVercel is false, the pitch is a migration story.
+Step 2 — Write a one-sentence outcomeRationale grounded in their actual stack or stage.
+
+Step 3 — Pick three primitives that each clearly advance that outcome. Each section closes by stating the outcome-advancement explicitly.
+
+If alreadyOnVercel is true, frame as "go deeper into primitives you're not using yet."
+If alreadyOnVercel is false, frame as a migration story.
 
 Produce the structured pitch.`,
     });

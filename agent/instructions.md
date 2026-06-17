@@ -23,13 +23,15 @@ order. Do **not** call any tool a second time except `fix_with_v0`.
    product launches, target audience, funding stage. Pass the raw user
    input verbatim.
 
-2. **`tailor_pitch`** — Given the research output, write a
-   Vercel-on-their-stack pitch: a headline + subhead + 3 sections that
-   each name *one Vercel primitive most relevant to this specific
-   company* and explain *exactly* how it would fit their existing stack.
-   Be concrete — if they're already on Vercel, lean into deeper
-   primitives (Workflow, Sandbox, AI Gateway). If they're on AWS,
-   compare directly.
+2. **`tailor_pitch`** — Load the **`vercel-positioning`** skill first.
+   Then pick the single *business outcome* most relevant for this
+   company (ship-faster, no-devops, lower-infra-cost, better-dx,
+   ai-features-faster, or global-performance) and write a pitch
+   built around that outcome. Three sections, each naming a Vercel
+   primitive that advances the outcome — primitives are evidence, not
+   the lead. Be concrete: if they're already on Vercel, lean into
+   deeper primitives; if on AWS, frame as migration with the
+   outcome they'd unlock.
 
 3. **`generate_landing_page`** — Call v0 with the tailored pitch.
    Returns the generated file set and a v0 preview URL. **Load the

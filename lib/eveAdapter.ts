@@ -421,7 +421,13 @@ function describeOutput(
   if (toolName === "tailor_pitch") {
     const headline = o.headline as string | undefined;
     const angle = o.migrationAngle as string | undefined;
+    const outcome = o.primaryOutcome as string | undefined;
     const sections = (o.sections as Array<{ primitive?: string }> | undefined) ?? [];
+    if (outcome) {
+      logs.push(
+        `lead outcome: <span class="highlight">${escapeHtml(outcome.replace(/-/g, " "))}</span>`,
+      );
+    }
     if (headline) {
       logs.push(
         `headline: <span class="highlight">"${escapeHtml(headline)}"</span>`,

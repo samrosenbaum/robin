@@ -47,10 +47,14 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  height: 100vh;
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* The demo route locks the viewport; marketing pages scroll naturally. */
+body.demo-locked {
+  height: 100vh;
+  overflow: hidden;
 }
 
 button {

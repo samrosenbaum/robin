@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { RunProvider } from "@/components/RunProvider";
 import "./globals.css";
 
 const geist = Geist({
@@ -25,7 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <RunProvider>{children}</RunProvider>
+      </body>
     </html>
   );
 }

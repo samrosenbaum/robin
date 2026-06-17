@@ -8,34 +8,35 @@ import { FileViewer } from "./FileViewer";
 import { AgentRunPanel } from "./AgentRunPanel";
 import { LogStream } from "./LogStream";
 import { VisualsPanel } from "./VisualsPanel";
-import type { LogEntry, OutputCard, SandboxSnapshot } from "@/lib/types";
+import { useRun, useFileOpenListener } from "./RunProvider";
 
 type CenterView = "visuals" | "code";
 
 export function DemoApp() {
+  const run = useRun();
   const [openFiles, setOpenFiles] = useState<string[]>(["agent.ts"]);
   const [activeFile, setActiveFile] = useState<string>("agent.ts");
-  const [runningFile, setRunningFile] = useState<string | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [centerView, setCenterView] = useState<CenterView>("visuals");
 
-  // Visual artifacts lifted up from AgentRunPanel so the center can render them.
-  const [sandboxActive, setSandboxActive] = useState(false);
-  const [sandboxSnapshot, setSandboxSnapshot] = useState<SandboxSnapshot | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [outputs, setOutputs] = useState<OutputCard[]>([]);
-
-  function openFile(filename: string) {
+  const openFile = useCallback((filename: string) => {
     setOpenFiles((prev) =>
       prev.includes(filename) ? prev : [...prev, filename],
     );
     setActiveFile(filename);
-    // Auto-switch to code view when a file opens during a run, so the
-    // running-file indicator + opened tab are visible.
-    if (centerView !== "code") {
-      // Stay on visuals — the file tree highlight is enough signal.
-    }
-  }
+  }, []);
+
+  // Pull `file-open` events from the global run provider so the file
+  // viewer auto-tracks the running tool, even after navigating away and
+  // back to the demo route.
+  useFileOpenListener(openFile);
+
+  // Lock the viewport only on the demo route — marketing pages scroll.
+  useEffect(() => {
+    document.body.classList.add("demo-locked");
+    return () => {
+      document.body.classList.remove("demo-locked");
+    };
+  }, []);
 
   function closeFile(filename: string) {
     setOpenFiles((prev) => {
@@ -68,7 +69,7 @@ export function DemoApp() {
       >
         <FileTree
           activeFile={activeFile}
-          runningFile={runningFile}
+          runningFile={run.runningFile}
           onFileOpen={openFile}
         />
         <div
@@ -91,10 +92,10 @@ export function DemoApp() {
           >
             {centerView === "visuals" ? (
               <VisualsPanel
-                sandboxActive={sandboxActive}
-                sandboxSnapshot={sandboxSnapshot}
-                previewUrl={previewUrl}
-                outputs={outputs}
+                sandboxActive={run.sandboxActive}
+                sandboxSnapshot={run.sandboxSnapshot}
+                previewUrl={run.previewUrl}
+                outputs={run.outputs}
               />
             ) : (
               <FileViewer
@@ -105,22 +106,9 @@ export function DemoApp() {
               />
             )}
           </div>
-          <LogDrawer entries={logs} />
+          <LogDrawer />
         </div>
-        <AgentRunPanel
-          onAutoOpenFile={openFile}
-          onFileRunning={setRunningFile}
-          logs={logs}
-          setLogs={setLogs}
-          sandboxActive={sandboxActive}
-          setSandboxActive={setSandboxActive}
-          sandboxSnapshot={sandboxSnapshot}
-          setSandboxSnapshot={setSandboxSnapshot}
-          previewUrl={previewUrl}
-          setPreviewUrl={setPreviewUrl}
-          outputs={outputs}
-          setOutputs={setOutputs}
-        />
+        <AgentRunPanel />
       </div>
     </div>
   );
@@ -201,7 +189,9 @@ function ViewTab({
 const MIN_DRAWER_H = 60;
 const COLLAPSED_DRAWER_H = 32;
 
-function LogDrawer({ entries }: { entries: LogEntry[] }) {
+function LogDrawer() {
+  const run = useRun();
+  const entries = run.logs;
   const [expanded, setExpanded] = useState(true);
   const [height, setHeight] = useState(() =>
     typeof window === "undefined"
@@ -259,7 +249,6 @@ function LogDrawer({ entries }: { entries: LogEntry[] }) {
         position: "relative",
       }}
     >
-      {/* Drag handle — invisible 6px strip on top edge */}
       {expanded && (
         <div
           onMouseDown={onMouseDown}
