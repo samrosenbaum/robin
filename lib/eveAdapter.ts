@@ -25,41 +25,44 @@ interface ToolMeta {
 // file we want to highlight. File names match entries in
 // lib/fileContents.ts (the illustrative files shown in the viewer).
 const TOOL_MAP: Record<string, ToolMeta> = {
-  research: {
+  research_company: {
     step: "research",
     primitive: "gateway",
-    file: "research.ts",
-    label: "research",
+    file: "research_company.ts",
+    label: "research_company",
   },
-  copywriter: {
-    step: "copy",
+  tailor_pitch: {
+    step: "tailor",
     primitive: "gateway",
-    file: "copywriter.ts",
-    label: "copywriter",
+    file: "tailor_pitch.ts",
+    label: "tailor_pitch",
   },
-  build_landing_page: {
-    step: "v0 build",
+  generate_landing_page: {
+    step: "generate",
     primitive: "sandbox",
-    file: "v0-builder.ts",
-    label: "build_landing_page",
+    file: "generate_landing_page.ts",
+    label: "generate_landing_page",
   },
-  post_to_slack: {
-    step: "outreach",
-    primitive: "connect",
-    file: "slack.ts",
-    label: "post_to_slack",
+  verify_in_sandbox: {
+    step: "verify",
+    primitive: "sandbox",
+    file: "verify_in_sandbox.ts",
+    label: "verify_in_sandbox",
   },
-  open_linear_ticket: {
-    step: "outreach",
-    primitive: "connect",
-    file: "linear.ts",
-    label: "open_linear_ticket",
+  fix_with_v0: {
+    step: "generate",
+    primitive: "sandbox",
+    file: "fix_with_v0.ts",
+    label: "fix_with_v0",
   },
 };
 
 interface AdapterState {
   start: number;
   callToTool: Map<string, string>;
+  // Was used to gate the outreach step's completion until both Slack and
+  // Linear tools finished. The new agent has one tool per step, so this is
+  // effectively unused but kept for type compatibility.
   outreachRemaining: number;
   sessionId?: string;
   totalInputTokens: number;
@@ -188,7 +191,7 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
         out.push({ type: "primitive", id: meta.primitive, state: "active" });
         out.push({ type: "file-open", file: meta.file });
         out.push({ type: "file-running", file: meta.file });
-        if (tc.toolName === "build_landing_page") {
+        if (tc.toolName === "verify_in_sandbox") {
           out.push({ type: "sandbox-start" });
         }
         log(
@@ -237,15 +240,7 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
         out.push({ type: "sandbox-result", snapshot: outputs.sandbox });
       }
 
-      // Mark step done — but outreach needs both tools.
-      if (meta.step === "outreach") {
-        state.outreachRemaining -= 1;
-        if (state.outreachRemaining <= 0) {
-          out.push({ type: "step", step: "outreach", state: "done" });
-        }
-      } else {
-        out.push({ type: "step", step: meta.step, state: "done" });
-      }
+      out.push({ type: "step", step: meta.step, state: "done" });
 
       // Transition primitive to "done" (lit but not pulsing) so prospects
       // can see at run-end that every primitive was exercised. Workflow
@@ -359,32 +354,28 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
 function doneStatFor(toolName: string, output: unknown): string {
   if (!output || typeof output !== "object") return "✓";
   const o = output as Record<string, unknown>;
-  if (toolName === "build_landing_page") {
+  if (toolName === "verify_in_sandbox") {
     const lines = o.totalLines as number | undefined;
-    const elapsed = o.sandboxElapsedMs as number | undefined;
+    const elapsed = o.elapsedMs as number | undefined;
     return `${lines ?? 0} lines · ${elapsed ? (elapsed / 1000).toFixed(1) + "s" : "✓"}`;
   }
-  if (toolName === "post_to_slack") {
-    const posted = o.posted as boolean | undefined;
-    return posted ? "1/2 sent" : "1/2 draft";
-  }
-  if (toolName === "open_linear_ticket") {
-    const posted = o.posted as boolean | undefined;
-    return posted ? "2/2 sent" : "2/2 draft";
+  if (toolName === "generate_landing_page" || toolName === "fix_with_v0") {
+    const elapsed = o.generationTimeMs as number | undefined;
+    return elapsed ? `v0 · ${(elapsed / 1000).toFixed(1)}s` : "✓ v0";
   }
   return "✓";
 }
 
 function tagForTool(toolName: string): LogTag {
   switch (toolName) {
-    case "research":
-    case "copywriter":
+    case "research_company":
+    case "tailor_pitch":
       return "gateway";
-    case "build_landing_page":
+    case "generate_landing_page":
+    case "fix_with_v0":
       return "v0";
-    case "post_to_slack":
-    case "open_linear_ticket":
-      return "connect";
+    case "verify_in_sandbox":
+      return "sandbox";
     default:
       return "info";
   }
@@ -405,101 +396,104 @@ function describeOutput(
     return { logs: [`<span class="success">✓ ${toolName} returned</span>`], cards };
   const o = output as Record<string, unknown>;
 
-  if (toolName === "research") {
-    const competitors = (o.competitors as Array<{ name?: string }> | undefined) ?? [];
-    const names = competitors
-      .map((c) => c.name)
-      .filter(Boolean)
-      .slice(0, 4)
-      .join(", ");
-    if (names)
-      logs.push(`Competitors: <span class="highlight">${escapeHtml(names)}</span>`);
+  if (toolName === "research_company") {
+    const name = o.companyName as string | undefined;
+    const desc = o.oneLineDescription as string | undefined;
+    const signals = (o.stackSignals as string[] | undefined) ?? [];
+    const onVercel = o.alreadyOnVercel as boolean | undefined;
+    if (name) {
+      logs.push(`identified <span class="highlight">${escapeHtml(name)}</span>`);
+    }
+    if (desc) {
+      logs.push(`one-liner: ${escapeHtml(desc)}`);
+    }
+    if (signals.length) {
+      logs.push(
+        `stack signals: <span class="highlight">${escapeHtml(signals.slice(0, 4).join(", "))}</span>`,
+      );
+    }
+    if (onVercel) {
+      logs.push(
+        `<span class="success">✓ already on Vercel — pitch will lean into deeper primitives</span>`,
+      );
+    }
   }
-  if (toolName === "copywriter") {
+  if (toolName === "tailor_pitch") {
     const headline = o.headline as string | undefined;
-    if (headline)
+    const angle = o.migrationAngle as string | undefined;
+    const sections = (o.sections as Array<{ primitive?: string }> | undefined) ?? [];
+    if (headline) {
       logs.push(
-        `Headline: <span class="highlight">"${escapeHtml(headline)}"</span>`,
+        `headline: <span class="highlight">"${escapeHtml(headline)}"</span>`,
       );
+    }
+    if (sections.length) {
+      const prims = sections.map((s) => s.primitive).filter(Boolean).join(" · ");
+      logs.push(
+        `pitching: <span class="highlight">${escapeHtml(prims)}</span> (${escapeHtml(angle ?? "?")})`,
+      );
+    }
   }
-  if (toolName === "build_landing_page") {
+  if (toolName === "generate_landing_page" || toolName === "fix_with_v0") {
     const preview = o.previewUrl as string | undefined;
-    const lines = o.totalLines as number | undefined;
-    const sbId = o.sandboxId as string | undefined;
-    const sbCmd = o.sandboxCommand as string | undefined;
-    const sbStdout = o.sandboxStdout as string | undefined;
-    const elapsed = o.sandboxElapsedMs as number | undefined;
-    const files = (o.files as string[] | undefined) ?? [];
-
-    if (sbId) {
+    const files = (o.files as Array<{ name?: string }> | undefined) ?? [];
+    const elapsed = o.generationTimeMs as number | undefined;
+    if (files.length) {
       logs.push(
-        `sandbox <span class="highlight">${escapeHtml(sbId.slice(0, 16))}</span> · ${files.length} files written · <span class="success">${lines ?? 0} lines</span> · ${elapsed ? (elapsed / 1000).toFixed(1) + "s" : ""}`,
-      );
-      sandbox = {
-        id: sbId,
-        command: sbCmd ?? "",
-        stdout: sbStdout ?? "",
-        files,
-        totalLines: lines ?? 0,
-        elapsedMs: elapsed ?? 0,
-      };
-    } else if (lines) {
-      logs.push(
-        `stdout: <span class="success">✓ component generated (${lines} lines)</span>`,
+        `v0 returned <span class="highlight">${files.length} files</span>${elapsed ? ` in ${(elapsed / 1000).toFixed(1)}s` : ""}`,
       );
     }
     if (preview) {
       logs.push(
-        `Deploying preview → <span class="success">${escapeHtml(preview.replace(/^https?:\/\//, ""))}</span>`,
+        `preview → <span class="success">${escapeHtml(preview.replace(/^https?:\/\//, "").slice(0, 60))}…</span>`,
       );
       cards.push({
-        label: "landing-page preview",
+        label: "v0 preview",
         color: "var(--v0)",
         icon: "↗",
         href: preview,
       });
     }
   }
-  if (toolName === "post_to_slack") {
-    const channel = (o.channel as string | undefined) ?? "#launches";
-    const posted = o.posted as boolean | undefined;
-    const preview = (o.preview as string | undefined) ?? "";
-    logs.push(
-      posted
-        ? `Slack draft posted → <span class="highlight">${escapeHtml(channel)}</span>`
-        : `Slack draft prepared → <span class="highlight">${escapeHtml(channel)}</span> <span class="warn">(no SLACK_BOT_TOKEN — preview only)</span>`,
-    );
-    cards.push({
-      label: `Slack draft ${channel}`,
-      color: "var(--success)",
-      icon: "→",
-      draftKind: "slack",
-      draftTitle: channel,
-      draftBody: preview,
-      draftMeta: posted ? "posted" : "preview only",
-    });
-  }
-  if (toolName === "open_linear_ticket") {
-    const id = o.identifier as string | undefined;
-    const url = o.url as string | undefined;
-    const previewObj = o.preview as
-      | { title?: string; description?: string }
-      | undefined;
-    logs.push(
-      id
-        ? `Linear ticket opened → <span class="highlight">${escapeHtml(id)}</span>`
-        : `Linear ticket drafted <span class="warn">(no LINEAR_API_KEY — preview only)</span>`,
-    );
-    cards.push({
-      label: id ? `Linear ${id}` : "Linear draft",
-      color: "var(--connect)",
-      icon: "→",
-      href: url,
-      draftKind: "linear",
-      draftTitle: previewObj?.title ?? "Review landing page",
-      draftBody: previewObj?.description ?? "",
-      draftMeta: id ?? "preview only",
-    });
+  if (toolName === "verify_in_sandbox") {
+    const passed = o.passed as boolean | undefined;
+    const sbId = o.sandboxId as string | undefined;
+    const lines = o.totalLines as number | undefined;
+    const elapsed = o.elapsedMs as number | undefined;
+    const files = (o.fileList as string[] | undefined) ?? [];
+    const cmds = (o.commands as Array<{
+      cmd?: string;
+      stdoutTail?: string;
+      exitCode?: number;
+      durationMs?: number;
+    }> | undefined) ?? [];
+
+    if (sbId) {
+      logs.push(
+        `sandbox <span class="highlight">${escapeHtml(sbId.slice(0, 16))}</span> · ${files.length} files · ${lines ?? 0} lines${elapsed ? ` · ${(elapsed / 1000).toFixed(1)}s` : ""}`,
+      );
+    }
+    if (passed) {
+      logs.push(
+        `<span class="success">✓ verify passed — component is well-formed</span>`,
+      );
+    } else {
+      const err = o.errorSummary as string | undefined;
+      logs.push(
+        `<span class="warn">verify failed: ${escapeHtml(err ?? "see sandbox output")}</span>`,
+      );
+    }
+
+    if (sbId) {
+      sandbox = {
+        id: sbId,
+        command: cmds.map((c) => c.cmd).filter(Boolean).join(" && "),
+        stdout: cmds.map((c) => c.stdoutTail || "").join("\n").slice(-1500),
+        files,
+        totalLines: lines ?? 0,
+        elapsedMs: elapsed ?? 0,
+      };
+    }
   }
   if (logs.length === 0)
     logs.push(`<span class="success">✓ ${toolName} returned</span>`);

@@ -18,14 +18,13 @@ import { WorkflowSteps } from "./WorkflowSteps";
 import { FluidMeter } from "./FluidMeter";
 import { createAdapter } from "@/lib/eveAdapter";
 
-const DEFAULT_PROMPT =
-  "Ship the v2 pricing page — tie it to our Series B announcement, target CTO/VP Eng personas";
+const DEFAULT_PROMPT = "anthropic.com";
 
 const INITIAL_STEPS: Record<StepName, StepState> = {
   research: "pending",
-  copy: "pending",
-  "v0 build": "pending",
-  outreach: "pending",
+  tailor: "pending",
+  generate: "pending",
+  verify: "pending",
 };
 
 const INITIAL_PRIMS: Record<PrimitiveId, PrimitiveState> = {

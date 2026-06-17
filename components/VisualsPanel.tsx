@@ -381,7 +381,7 @@ function EmptyState() {
             lineHeight: 1.2,
           }}
         >
-          Agents are where the web was before frameworks.
+          Type a company. Ship a custom Vercel pitch.
         </h1>
         <p
           style={{
@@ -392,22 +392,45 @@ function EmptyState() {
             maxWidth: 640,
           }}
         >
-          Everyone hand-rolls the same production plumbing — durable state,
-          sandboxed compute, OAuth tokens, model fallbacks, observability —
-          and nothing carries over to the next agent. Vercel ships those as
-          primitives so you build what your agent does, not how it runs.
-          This demo composes them via{" "}
-          <a
-            href="https://vercel.com/blog/introducing-eve"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: "var(--text)", fontWeight: 500 }}
-          >
-            Eve
-          </a>
-          , Vercel&apos;s open-source agent framework — five files in a
-          Next.js repo, production-grade from day one.
+          Drop a company name or URL in the prompt on the right. The agent
+          researches what they do and what their stack looks like, tailors
+          a Vercel-on-their-stack pitch, generates a custom landing page
+          via v0, and verifies it builds in a Vercel Sandbox — all while
+          you&apos;re in the meeting. Built on the same five primitives the
+          generated page itself pitches.
         </p>
+
+        <div
+          style={{
+            marginTop: 20,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+          }}
+        >
+          {[
+            "anthropic.com",
+            "cursor.com",
+            "stripe.com",
+            "linear.app",
+            "replit.com",
+          ].map((e) => (
+            <span
+              key={e}
+              style={{
+                padding: "4px 10px",
+                borderRadius: 999,
+                background: "var(--surface2)",
+                border: "1px solid var(--border)",
+                color: "var(--text2)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+              }}
+            >
+              {e}
+            </span>
+          ))}
+        </div>
 
         <div
           style={{
