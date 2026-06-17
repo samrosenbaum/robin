@@ -433,4 +433,153 @@ export default function LaunchPage() {
   }
 }
 `,
+
+  "competitor-research.md": `---
+description: A repeatable methodology for analyzing competitors when researching
+  a launch — what to pull, in what order, and how to structure the output.
+---
+
+# Skill: Competitor research
+
+Use this skill when you need to map a competitive landscape for a launch
+brief. Load when the user mentions a category that already has incumbents
+(devtools, AI infra, SaaS, etc.).
+
+## Procedure
+
+For each candidate competitor, capture exactly four things — no more, no
+less. The model is wasting context if it pulls more than this.
+
+1. **Positioning headline** — the line they actually lead their site with.
+2. **Pricing tier shape** — number of tiers, lowest paid tier, whether
+   pricing is published or "contact us". Hidden pricing is itself a signal.
+3. **Key differentiator** — the single property they bet on that nothing
+   else in the space has. One sentence.
+4. **Recent move** — most recent shipped feature or launch (≤ 90 days).
+
+## Output shape
+
+Return strict JSON. The downstream copywriter skill expects this shape:
+
+\\\`\\\`\\\`json
+{
+  "summary": "one-sentence read on the competitive landscape",
+  "competitors": [
+    {
+      "name": "Linear",
+      "positioning": "The issue tracker built for high-performance teams.",
+      "pricingShape": "3 tiers, $8/seat min, fully published",
+      "differentiator": "Speed and design discipline over feature breadth."
+    }
+  ]
+}
+\\\`\\\`\\\`
+
+## Heuristics
+
+- **Cap at 4 competitors.** Beyond 4, ROI on additional research falls fast.
+- **Skip the obvious decoys.** If a "competitor" is 50× larger than the
+  user, they're a market — not a competitor. Exclude.
+- **Prefer current over comprehensive.** A 6-month-old comparison is noise.
+`,
+
+  "copy-craft.md": `---
+description: Conversion copywriting principles for technical SaaS landing
+  pages. Load when generating headline/subhead/body for a launch targeting
+  engineers or technical leaders.
+---
+
+# Skill: Copy craft
+
+Use this skill when writing copy for technical buyers (CTOs, VP Eng,
+platform engineers, founding engineers).
+
+## The 5-second test
+
+A reader scans the headline + subhead and decides in five seconds whether
+to keep reading. The test: would the reader you actually want feel a
+specific tension *resolve* in those five seconds?
+
+A passing headline:
+- Names the specific category (pricing page, eval suite, billing infra)
+- Promises one concrete outcome (predictable cost, faster iteration)
+- Sounds like the user could quote it in a Slack thread without embarrassment
+
+## Structure
+
+| Field      | Length      | What it does                                    |
+|------------|-------------|-------------------------------------------------|
+| headline   | ≤ 12 words  | Names the problem and the resolution            |
+| subhead    | 1 sentence  | Concrete benefit with a verb that isn't "enable"|
+| body       | 60-90 words | The proof. Numbers, names, before/after.        |
+| cta        | ≤ 4 words   | Verb-first. "See live pricing"                  |
+| valueProps | 3 × ≤ 8 wds | Concrete features, not adjectives               |
+
+## Words to never ship
+
+- "leverage" — say "use"
+- "empower" — say "let"
+- "unleash", "unlock", "supercharge", "transform"
+- "seamless", "robust", "scalable" (without a number attached)
+- "10x", "best-in-class", "next-gen", "industry-leading"
+`,
+
+  "v0-prompting.md": `---
+description: How to prompt v0 effectively for production-quality landing
+  pages. Load before calling build_landing_page.
+---
+
+# Skill: Prompting v0 for production pages
+
+Use this skill before calling the build_landing_page tool. The difference
+between a v0 output that ships and one that gets thrown away is almost
+entirely in the prompt.
+
+## The four-block prompt
+
+1. **Identity** — who is reading this page
+2. **Outcome** — what they should feel/do
+3. **Content** — the actual copy (headline, subhead, body, CTA)
+4. **Constraints** — style + framework + components
+
+### Constraints that reliably produce production output
+
+- "Use Tailwind. Use shadcn/ui Button and Card. Dark mode by default."
+- "Minimal, monospace headings. No gradient backgrounds."
+- "Hero section, 3-tier pricing table, FAQ accordion, footer."
+- "Return only the React component code. No explanation."
+
+## Anti-patterns
+
+- **Over-constraining color** — v0 picks dark palettes well.
+- **Asking for animation** — v0's animation defaults are noisy.
+- **Including layout in the headline** — v0 will literally put the words
+  "above the fold" into the page.
+`,
+
+  "slack-formatting.md": `---
+description: Slack Block Kit patterns for launch announcements. Load when
+  calling post_to_slack so the message renders richly.
+---
+
+# Skill: Slack Block Kit for launch announcements
+
+A plain-text Slack message is fine for a heads-up; a launch announcement
+needs structure.
+
+## Rules
+
+- **Always link, never paste** raw URLs. Use \\\`<url|label>\\\` mrkdwn.
+- **Header block first.** Slack collapses long messages — header always shows.
+- **Actions block last.** Buttons at the bottom; CTA after content.
+- **Keep total blocks ≤ 8.** Beyond that Slack truncates and buttons hide.
+- **Use mrkdwn for sections.** plain_text doesn't parse markdown bold.
+
+## Common mistakes
+
+- Sending the v0 preview URL with its query string. Slack tries to unfurl;
+  unfurl times out; message looks broken. Strip query, wrap in a button.
+- Posting to #general. Always post to a launch-specific channel
+  (#launches, #product-changes) so audience self-selects.
+`,
 };

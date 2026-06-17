@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Loader2 } from "lucide-react";
 import type {
   LogEntry,
@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import { PrimitivesGrid } from "./PrimitivesGrid";
 import { WorkflowSteps } from "./WorkflowSteps";
+import { FluidMeter } from "./FluidMeter";
 import { createAdapter } from "@/lib/eveAdapter";
 
 const DEFAULT_PROMPT =
@@ -80,6 +81,13 @@ export function AgentRunPanel({
   const [stats, setStats] = useState(INITIAL_STATS);
   const [error, setError] = useState<string | null>(null);
   const [runSessionId, setRunSessionId] = useState<string | null>(null);
+  // Fluid Compute meter — tracks elapsed wall time and estimated active CPU.
+  // A burst of events within 200ms counts as ~"active"; longer gaps are I/O
+  // wait on the model (the part Fluid does not bill).
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [activeMs, setActiveMs] = useState(0);
+  const runStartRef = useRef<number | null>(null);
+  const lastEventAtRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   void logs;
   void _sandboxActive;
@@ -98,11 +106,36 @@ export function AgentRunPanel({
     setPreviewUrl(null);
     setSandboxActive(false);
     setSandboxSnapshot(null);
+    setElapsedMs(0);
+    setActiveMs(0);
+    runStartRef.current = null;
+    lastEventAtRef.current = null;
+  }
+
+  // Tick the wall-clock elapsed counter while a run is in flight, so the
+  // Fluid Compute meter shows live I/O wait accumulating in real time.
+  useEffect(() => {
+    if (runState !== "running") return;
+    const id = setInterval(() => {
+      if (runStartRef.current) {
+        setElapsedMs(Date.now() - runStartRef.current);
+      }
+    }, 100);
+    return () => clearInterval(id);
+  }, [runState]);
+
+  // Bump the "active CPU" estimate each time we actually process an event.
+  // Long gaps (model thinking) don't contribute; only the work-per-event does.
+  function recordEventActivity() {
+    if (!runStartRef.current) return;
+    setActiveMs((prev) => prev + 80);
   }
 
   async function startRun() {
     reset();
     setRunState("running");
+    runStartRef.current = Date.now();
+    lastEventAtRef.current = Date.now();
     const ac = new AbortController();
     abortRef.current = ac;
 
@@ -169,6 +202,7 @@ export function AgentRunPanel({
             } catch {
               continue;
             }
+            recordEventActivity();
             for (const ev of adapter.handle(parsed)) {
               applyEvent(ev);
               if (ev.type === "done") finished = true;
@@ -374,9 +408,14 @@ export function AgentRunPanel({
         </div>
       )}
 
-      {/* Primitives + steps */}
+      {/* Primitives + steps + fluid compute */}
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
         <PrimitivesGrid states={prims} stats={stats} />
+        <FluidMeter
+          elapsedMs={elapsedMs}
+          activeMs={activeMs}
+          running={runState === "running"}
+        />
         <div>
           <div
             style={{
