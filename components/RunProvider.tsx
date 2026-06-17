@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type {
+  GatewayCall,
   LogEntry,
   OutputCard,
   PrimitiveId,
@@ -65,6 +66,9 @@ export interface RunContextValue {
   elapsedMs: number;
   activeMs: number;
 
+  modelId: string | null;
+  gatewayCalls: GatewayCall[];
+
   startRun: (prompt: string) => Promise<void>;
   reset: () => void;
 }
@@ -99,6 +103,9 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [activeMs, setActiveMs] = useState(0);
 
+  const [modelId, setModelId] = useState<string | null>(null);
+  const [gatewayCalls, setGatewayCalls] = useState<GatewayCall[]>([]);
+
   const abortRef = useRef<AbortController | null>(null);
   const runStartRef = useRef<number | null>(null);
   const lastEventAtRef = useRef<number | null>(null);
@@ -117,6 +124,8 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
     setRunningFile(null);
     setElapsedMs(0);
     setActiveMs(0);
+    setModelId(null);
+    setGatewayCalls([]);
     runStartRef.current = null;
     lastEventAtRef.current = null;
   }, []);
@@ -164,6 +173,12 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
         return;
       case "sandbox-result":
         setSandboxSnapshot(evt.snapshot);
+        return;
+      case "gateway-info":
+        setModelId(evt.modelId);
+        return;
+      case "gateway-call":
+        setGatewayCalls((prev) => [...prev, evt.call]);
         return;
       case "output":
         setOutputs((prev) => [...prev, evt.output]);
@@ -313,6 +328,8 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
     previewUrl,
     elapsedMs,
     activeMs,
+    modelId,
+    gatewayCalls,
     startRun,
     reset,
   };

@@ -5,6 +5,7 @@ import { Play, Loader2 } from "lucide-react";
 import { PrimitivesGrid } from "./PrimitivesGrid";
 import { WorkflowSteps } from "./WorkflowSteps";
 import { FluidMeter } from "./FluidMeter";
+import { GatewayMeter } from "./GatewayMeter";
 import { useRun } from "./RunProvider";
 
 const DEFAULT_PROMPT = "anthropic.com";
@@ -138,6 +139,16 @@ export function AgentRunPanel() {
           }}
         >
           <PrimitivesGrid states={run.prims} stats={run.primStats} />
+          <GatewayMeter
+            modelId={run.modelId}
+            calls={run.gatewayCalls}
+            running={running}
+            currentTool={
+              run.runningFile
+                ? run.runningFile.replace(/\.ts$/, "")
+                : null
+            }
+          />
           <FluidMeter
             elapsedMs={run.elapsedMs}
             activeMs={run.activeMs}

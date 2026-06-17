@@ -60,16 +60,16 @@ const TOOL_MAP: Record<string, ToolMeta> = {
 interface AdapterState {
   start: number;
   callToTool: Map<string, string>;
-  // Was used to gate the outreach step's completion until both Slack and
-  // Linear tools finished. The new agent has one tool per step, so this is
-  // effectively unused but kept for type compatibility.
   outreachRemaining: number;
   sessionId?: string;
   totalInputTokens: number;
   totalOutputTokens: number;
-  // Number of NDJSON lines consumed — used to resume the stream after a
-  // mid-run disconnect via ?startIndex=eventCount.
   eventCount: number;
+  // For the Gateway visualization: map stepIndex → the tool the model
+  // asked to call during that step. We see actions.requested first, then
+  // step.completed (which carries the usage). At step.completed we emit a
+  // gateway-call event tying the two together.
+  stepToTool: Map<number, string>;
 }
 
 export function createAdapter(opts?: {
@@ -88,6 +88,7 @@ export function createAdapter(opts?: {
     totalInputTokens: 0,
     totalOutputTokens: 0,
     eventCount: opts?.startIndex ?? 0,
+    stepToTool: new Map(),
   };
   return {
     state,
@@ -141,6 +142,11 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
           "workflow",
           `Agent <span class="highlight">${escapeHtml(runtime.agentName ?? "?")}</span> · model <span class="highlight">${escapeHtml(runtime.modelId)}</span>`,
         );
+        out.push({
+          type: "gateway-info",
+          modelId: runtime.modelId,
+          agentName: runtime.agentName ?? "agent",
+        });
       }
       return out;
     }
@@ -164,6 +170,7 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
 
     case "actions.requested": {
       const actions = (evt.data?.actions as unknown[] | undefined) ?? [];
+      const stepIndex = (evt.data?.stepIndex as number | undefined) ?? 0;
       for (const a of actions) {
         if (
           !a ||
@@ -176,6 +183,9 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
           toolName: string;
           input?: Record<string, unknown>;
         };
+        // Remember which tool the model asked for at this step, so when
+        // step.completed lands we can label the gateway call.
+        state.stepToTool.set(stepIndex, tc.toolName);
         const meta = TOOL_MAP[tc.toolName];
         const inputKeys = Object.keys(tc.input ?? {});
         if (!meta) {
@@ -269,6 +279,7 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
           }
         | undefined;
       const finishReason = evt.data?.finishReason as string | undefined;
+      const stepIndex = (evt.data?.stepIndex as number | undefined) ?? 0;
       if (usage && (usage.inputTokens || usage.outputTokens)) {
         state.totalInputTokens += usage.inputTokens ?? 0;
         state.totalOutputTokens += usage.outputTokens ?? 0;
@@ -279,12 +290,25 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
           "obs",
           `step: <span class="highlight">${(usage.inputTokens ?? 0).toLocaleString()}</span> in / <span class="highlight">${(usage.outputTokens ?? 0).toLocaleString()}</span> out${cache} · total <span class="highlight">${(state.totalInputTokens + state.totalOutputTokens).toLocaleString()}</span>`,
         );
-        // Surface running totals on the AI Gateway primitive card too.
         out.push({
           type: "primitive",
           id: "gateway",
           state: "active",
           stat: `${(state.totalInputTokens + state.totalOutputTokens).toLocaleString()} tok`,
+        });
+        // Emit a Gateway call record for the visualization.
+        out.push({
+          type: "gateway-call",
+          call: {
+            ts: ts(state.start),
+            stepIndex,
+            toolName: state.stepToTool.get(stepIndex),
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+            cacheReadTokens: usage.cacheReadTokens,
+            cacheWriteTokens: usage.cacheWriteTokens,
+            finishReason,
+          },
         });
       }
       log(

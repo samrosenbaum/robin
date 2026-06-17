@@ -60,6 +60,17 @@ export interface SandboxSnapshot {
   elapsedMs: number;
 }
 
+export interface GatewayCall {
+  ts: string;
+  stepIndex: number;
+  toolName?: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  finishReason?: string;
+}
+
 export type RunEvent =
   | { type: "log"; ts: string; tag: LogTag; msg: string }
   | { type: "step"; step: StepName; state: StepState }
@@ -73,6 +84,8 @@ export type RunEvent =
   | { type: "file-running"; file: string | null }
   | { type: "sandbox-start" }
   | { type: "sandbox-result"; snapshot: SandboxSnapshot }
+  | { type: "gateway-info"; modelId: string; agentName: string }
+  | { type: "gateway-call"; call: GatewayCall }
   | { type: "output"; output: OutputCard }
   | { type: "done" }
   | { type: "error"; msg: string };
