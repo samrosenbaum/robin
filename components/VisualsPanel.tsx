@@ -328,36 +328,256 @@ function EmptyState() {
       style={{
         flex: 1,
         minHeight: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        overflowY: "auto",
         background: "var(--bg)",
-        color: "var(--text3)",
-        fontFamily: "var(--font-mono)",
-        fontSize: 13,
-        padding: 40,
-        textAlign: "center",
+        padding: "48px 32px",
       }}
     >
-      <div style={{ maxWidth: 420 }}>
-        <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.5 }}>▲</div>
-        <p style={{ margin: 0, lineHeight: 1.6 }}>
-          Edit the prompt on the right and hit <strong>Run agent</strong>.
-          The sandbox, v0 preview, and outreach drafts will appear here as
-          the agent works.
-        </p>
+      <div
+        style={{
+          maxWidth: 760,
+          margin: "0 auto",
+          fontFamily: "var(--font-sans)",
+          color: "var(--text)",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "4px 10px",
+            borderRadius: 999,
+            background: "var(--surface2)",
+            border: "1px solid var(--border)",
+            color: "var(--text2)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            marginBottom: 16,
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              background: "var(--workflow)",
+              boxShadow: "0 0 6px var(--workflow)",
+            }}
+          />
+          built with eve
+        </div>
+
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 30,
+            fontWeight: 600,
+            letterSpacing: -0.5,
+            color: "var(--text)",
+          }}
+        >
+          Launch Intelligence
+        </h1>
         <p
           style={{
             margin: "10px 0 0",
-            fontSize: 11,
-            color: "var(--text3)",
-            opacity: 0.7,
+            color: "var(--text2)",
+            fontSize: 15,
+            lineHeight: 1.6,
+            maxWidth: 640,
           }}
         >
-          Switch to the <strong>Code</strong> view in the header to inspect
-          the agent's source files.
+          An autonomous launch agent — give it a brief, it ships the launch:
+          competitor research, copy, a v0-built landing page, and outreach
+          drafts for Slack and Linear.
         </p>
+
+        <div
+          style={{
+            marginTop: 28,
+            padding: "16px 18px",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            background: "var(--surface)",
+            color: "var(--text2)",
+            fontSize: 14,
+            lineHeight: 1.65,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              color: "var(--text3)",
+              marginBottom: 8,
+            }}
+          >
+            what is eve?
+          </div>
+          <a
+            href="https://vercel.com/docs/eve"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "var(--text)", fontWeight: 500 }}
+          >
+            Eve
+          </a>{" "}
+          is Vercel&apos;s filesystem-first framework for durable backend AI
+          agents. You author the agent under <code style={mono}>agent/</code> —
+          one file per tool, one file per channel, a markdown file for the
+          system prompt. Eve discovers, validates, compiles, and serves the
+          runtime on Vercel Functions with first-class observability.
+        </div>
+
+        <div
+          style={{
+            marginTop: 28,
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: 1,
+            textTransform: "uppercase",
+            color: "var(--text3)",
+            marginBottom: 12,
+          }}
+        >
+          the primitives this agent composes
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {PRIMITIVES.map((p) => (
+            <div
+              key={p.name}
+              style={{
+                padding: "14px 16px",
+                borderRadius: 10,
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: `linear-gradient(135deg, ${p.color}14 0%, transparent 60%)`,
+                  pointerEvents: "none",
+                }}
+              />
+              <div
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 6,
+                }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 999,
+                    background: p.color,
+                    boxShadow: `0 0 6px ${p.color}`,
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 13,
+                    color: "var(--text)",
+                  }}
+                >
+                  {p.name}
+                </span>
+              </div>
+              <p
+                style={{
+                  position: "relative",
+                  margin: 0,
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                  color: "var(--text2)",
+                }}
+              >
+                {p.summary}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            marginTop: 32,
+            padding: "14px 16px",
+            borderRadius: 10,
+            background: "rgba(99,102,241,0.07)",
+            border: "1px solid rgba(99,102,241,0.25)",
+            color: "var(--text)",
+            fontSize: 14,
+            lineHeight: 1.55,
+          }}
+        >
+          <strong>Try it:</strong> edit the prompt on the right (tailor it for
+          whichever company you&apos;re demoing) and hit{" "}
+          <span style={mono}>Run agent</span>. The sandbox, v0 preview, and
+          outreach drafts appear here in real time. Switch to{" "}
+          <span style={mono}>Code</span> in the header to inspect the agent
+          source.
+        </div>
       </div>
     </div>
   );
 }
+
+const mono: React.CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: "0.92em",
+  color: "var(--text)",
+  background: "var(--surface2)",
+  padding: "1px 6px",
+  borderRadius: 4,
+};
+
+const PRIMITIVES = [
+  {
+    name: "Vercel Workflow",
+    color: "var(--workflow)",
+    summary:
+      "Persists session state and resumes interrupted work. Every step is a durable checkpoint — sessions survive cold starts, redeploys, and long pauses. The wrun_* ID you see in the right panel is a real Workflow run.",
+  },
+  {
+    name: "Vercel Sandbox",
+    color: "var(--sandbox)",
+    summary:
+      "Isolates code execution in ephemeral Firecracker microVMs. The v0-generated landing page gets written into a sandbox /workspace and verified there before anything touches your infra.",
+  },
+  {
+    name: "AI Gateway",
+    color: "var(--gateway)",
+    summary:
+      "Routes model requests through Vercel's gateway — single API key, provider fallbacks, observable. The agent talks to claude-sonnet-4.6 via gateway model strings, no provider creds in code.",
+  },
+  {
+    name: "Vercel Connect",
+    color: "var(--connect)",
+    summary:
+      "Manages OAuth tokens and API keys for external services. Slack and Linear posting flows would resolve their tokens at runtime via Connect — no long-lived secrets stored in env vars.",
+  },
+  {
+    name: "v0",
+    color: "var(--v0)",
+    summary:
+      "Generates the landing-page component from the copy brief. The chat returns code, the sandbox verifies it, and the demoUrl gets embedded in the preview iframe right here.",
+  },
+];
