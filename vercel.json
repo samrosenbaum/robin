@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "next build && eve build",
+  "buildCommand": "eve build && next build",
   "installCommand": "npm install"
 }
