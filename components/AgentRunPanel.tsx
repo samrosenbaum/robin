@@ -54,6 +54,8 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
   const [stats, setStats] = useState(INITIAL_STATS);
   const [outputs, setOutputs] = useState<OutputCard[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [runSessionId, setRunSessionId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   function reset() {
@@ -63,6 +65,8 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
     setStats(INITIAL_STATS);
     setOutputs([]);
     setError(null);
+    setRunSessionId(null);
+    setPreviewUrl(null);
   }
 
   async function startRun() {
@@ -92,40 +96,72 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
           .catch(() => ({}))) as { sessionId?: string }).sessionId;
       if (!sessionId) throw new Error("no x-eve-session-id returned");
 
-      // 2) Attach to the NDJSON event stream.
-      const streamRes = await fetch(`/eve/v1/session/${sessionId}/stream`, {
-        signal: ac.signal,
-      });
-      if (!streamRes.ok || !streamRes.body) {
-        throw new Error(`eve session stream failed: ${streamRes.status}`);
-      }
+      setRunSessionId(sessionId);
 
-      const adapter = createAdapter();
-      const reader = streamRes.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      // 2) Attach to the durable stream, reconnecting on premature close
+      //    (Vercel functions may cut a long stream; the session itself is
+      //    durable so we just re-attach with ?startIndex=<eventsSeen>).
+      const adapter = createAdapter({ sessionId });
       let finished = false;
+      const MAX_RECONNECTS = 8;
+      let reconnects = 0;
 
       while (!finished) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buffer.indexOf("\n")) >= 0) {
-          const line = buffer.slice(0, nl).trim();
-          buffer = buffer.slice(nl + 1);
-          if (!line) continue;
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(line);
-          } catch {
-            continue;
-          }
-          for (const ev of adapter.handle(parsed)) {
-            applyEvent(ev);
-            if (ev.type === "done") finished = true;
+        const url = `/eve/v1/session/${sessionId}/stream${
+          adapter.state.eventCount > 0
+            ? `?startIndex=${adapter.state.eventCount}`
+            : ""
+        }`;
+        const streamRes = await fetch(url, { signal: ac.signal });
+        if (!streamRes.ok || !streamRes.body) {
+          throw new Error(`eve stream attach failed: ${streamRes.status}`);
+        }
+
+        const reader = streamRes.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let receivedAny = false;
+
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          receivedAny = true;
+          buffer += decoder.decode(value, { stream: true });
+          let nl: number;
+          while ((nl = buffer.indexOf("\n")) >= 0) {
+            const line = buffer.slice(0, nl).trim();
+            buffer = buffer.slice(nl + 1);
+            if (!line) continue;
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(line);
+            } catch {
+              continue;
+            }
+            for (const ev of adapter.handle(parsed)) {
+              applyEvent(ev);
+              if (ev.type === "done") finished = true;
+            }
           }
         }
+
+        if (finished) break;
+        if (reconnects >= MAX_RECONNECTS) {
+          setError(
+            `stream closed after ${reconnects} reconnects without session.completed`,
+          );
+          break;
+        }
+        reconnects += 1;
+        setLogs((prev) => [
+          ...prev,
+          {
+            ts: hhmmss(adapter.state.start),
+            tag: "workflow",
+            msg: `<span class="warn">stream cut — reconnecting at event ${adapter.state.eventCount}</span>`,
+          },
+        ]);
+        if (!receivedAny) await new Promise((r) => setTimeout(r, 800));
       }
       setRunState("done");
     } catch (e) {
@@ -138,6 +174,11 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
     } finally {
       abortRef.current = null;
     }
+  }
+
+  function hhmmss(start: number): string {
+    const sec = Math.floor((Date.now() - start) / 1000);
+    return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
   }
 
   function applyEvent(evt: RunEvent) {
@@ -162,6 +203,10 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
         return;
       case "output":
         setOutputs((prev) => [...prev, evt.output]);
+        // Capture the v0 preview URL for the embedded iframe.
+        if (evt.output.label?.toLowerCase().includes("preview") && evt.output.href) {
+          setPreviewUrl(evt.output.href);
+        }
         return;
       case "error":
         setError(evt.msg);
@@ -251,6 +296,37 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
         </button>
       </div>
 
+      {/* Workflow run badge — concretely shows it's a Vercel Workflow run */}
+      {runSessionId && (
+        <div
+          style={{
+            padding: "8px 14px",
+            borderBottom: "1px solid var(--border)",
+            background: "rgba(99,102,241,0.06)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            color: "var(--text2)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ color: "var(--workflow)" }}>▲</span>
+          <span style={{ color: "var(--text3)" }}>vercel workflow run</span>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              color: "var(--text)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+            title={runSessionId}
+          >
+            {runSessionId}
+          </span>
+        </div>
+      )}
+
       {/* Primitives + steps */}
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
         <PrimitivesGrid states={prims} stats={stats} />
@@ -270,6 +346,53 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
           <WorkflowSteps states={steps} />
         </div>
       </div>
+
+      {/* Live v0 preview — fills in once build_landing_page returns. */}
+      {previewUrl && (
+        <div style={{ padding: "0 14px 14px" }}>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: 1,
+              color: "var(--text3)",
+              marginBottom: 6,
+              textTransform: "uppercase",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            v0 preview
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: "var(--v0)",
+                textDecoration: "none",
+                fontSize: 11,
+                textTransform: "none",
+                letterSpacing: 0,
+              }}
+            >
+              open ↗
+            </a>
+          </div>
+          <iframe
+            src={previewUrl}
+            title="v0 preview"
+            style={{
+              width: "100%",
+              height: 240,
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              background: "white",
+            }}
+            sandbox="allow-scripts allow-same-origin allow-forms"
+          />
+        </div>
+      )}
 
       {/* Log stream — flexes to fill */}
       <LogStream entries={logs} />

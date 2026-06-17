@@ -56,22 +56,40 @@ const TOOL_MAP: Record<string, ToolMeta> = {
 
 interface AdapterState {
   start: number;
-  // toolName → callId, so action.result can advance the right step.
   callToTool: Map<string, string>;
-  // We don't want to mark "outreach" done until BOTH outreach tools resolve.
   outreachRemaining: number;
+  sessionId?: string;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  // Number of NDJSON lines consumed — used to resume the stream after a
+  // mid-run disconnect via ?startIndex=eventCount.
+  eventCount: number;
 }
 
-export function createAdapter(): {
+export function createAdapter(opts?: {
+  sessionId?: string;
+  start?: number;
+  startIndex?: number;
+}): {
   state: AdapterState;
   handle: (raw: unknown) => RunEvent[];
 } {
   const state: AdapterState = {
-    start: Date.now(),
+    start: opts?.start ?? Date.now(),
     callToTool: new Map(),
     outreachRemaining: 2,
+    sessionId: opts?.sessionId,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    eventCount: opts?.startIndex ?? 0,
   };
-  return { state, handle: (raw) => handleEvent(raw, state) };
+  return {
+    state,
+    handle: (raw) => {
+      state.eventCount += 1;
+      return handleEvent(raw, state);
+    },
+  };
 }
 
 function ts(start: number): string {
@@ -90,21 +108,53 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
 
   switch (evt.type) {
     case "session.started": {
+      // Eve sessions ARE Vercel Workflow runs. The sessionId is a real
+      // workflow run identifier (wrun_*). Surface it so prospects can see
+      // we're not faking durability.
+      const runtime = evt.data?.runtime as
+        | { agentName?: string; modelId?: string }
+        | undefined;
+      const sessionId =
+        state.sessionId ??
+        getStr(evt.data, "sessionId") ??
+        "wrun_unknown";
       out.push({
         type: "primitive",
         id: "workflow",
         state: "active",
-        stat: "running",
+        stat: sessionId.startsWith("wrun_")
+          ? `${sessionId.slice(0, 12)}…`
+          : "running",
       });
       log(
         "workflow",
-        `Session <span class="highlight">${getStr(evt.data, "sessionId")?.slice(0, 8) ?? "wf"}</span> started. Durable checkpointing enabled.`,
+        `Vercel Workflow run <span class="highlight">${escapeHtml(sessionId)}</span> created. Event log persisted; each step is a durable checkpoint.`,
       );
+      if (runtime?.modelId) {
+        log(
+          "workflow",
+          `Agent <span class="highlight">${escapeHtml(runtime.agentName ?? "?")}</span> · model <span class="highlight">${escapeHtml(runtime.modelId)}</span>`,
+        );
+      }
       return out;
     }
 
-    case "turn.started":
+    case "turn.started": {
+      log("workflow", `turn started`);
       return out;
+    }
+
+    case "message.received": {
+      const msg = (evt.data?.message as string | undefined) ?? "";
+      log("info", `→ user: <span class="highlight">${escapeHtml(msg.slice(0, 160))}</span>`);
+      return out;
+    }
+
+    case "step.started": {
+      const idx = evt.data?.stepIndex as number | undefined;
+      log("gateway", `step ${idx ?? "?"} started — model thinking…`);
+      return out;
+    }
 
     case "actions.requested": {
       const actions = (evt.data?.actions as unknown[] | undefined) ?? [];
@@ -121,8 +171,12 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
           input?: Record<string, unknown>;
         };
         const meta = TOOL_MAP[tc.toolName];
+        const inputKeys = Object.keys(tc.input ?? {});
         if (!meta) {
-          log("info", `Calling tool <span class="highlight">${tc.toolName}</span>`);
+          log(
+            "info",
+            `→ call <span class="highlight">${escapeHtml(tc.toolName)}</span>(${inputKeys.join(", ")})`,
+          );
           continue;
         }
         state.callToTool.set(tc.callId, tc.toolName);
@@ -132,8 +186,19 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
         out.push({ type: "file-open", file: meta.file });
         log(
           tagForTool(tc.toolName),
-          `Calling <span class="highlight">${meta.label}</span>`,
+          `→ call <span class="highlight">${escapeHtml(meta.label)}</span>(${inputKeys.join(", ")})`,
         );
+        // Preview a fragment of the input so prospects see real data flowing.
+        const previewKey = inputKeys.find((k) =>
+          ["brief", "headline", "previewUrl"].includes(k),
+        );
+        if (previewKey && typeof tc.input?.[previewKey] === "string") {
+          const v = (tc.input[previewKey] as string).slice(0, 100);
+          log(
+            tagForTool(tc.toolName),
+            `  ${previewKey}: <span class="highlight">${escapeHtml(v)}</span>`,
+          );
+        }
       }
       return out;
     }
@@ -182,24 +247,64 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
 
     case "step.completed": {
       const usage = evt.data?.usage as
-        | { inputTokens?: number; outputTokens?: number }
+        | {
+            inputTokens?: number;
+            outputTokens?: number;
+            cacheReadTokens?: number;
+            cacheWriteTokens?: number;
+          }
         | undefined;
+      const finishReason = evt.data?.finishReason as string | undefined;
       if (usage && (usage.inputTokens || usage.outputTokens)) {
+        state.totalInputTokens += usage.inputTokens ?? 0;
+        state.totalOutputTokens += usage.outputTokens ?? 0;
+        const cache = usage.cacheReadTokens
+          ? ` · <span class="highlight">${usage.cacheReadTokens.toLocaleString()}</span> cache read`
+          : "";
         log(
           "obs",
-          `Token usage: <span class="highlight">${(usage.inputTokens ?? 0).toLocaleString()}</span> input | ${(usage.outputTokens ?? 0).toLocaleString()} output`,
+          `step: <span class="highlight">${(usage.inputTokens ?? 0).toLocaleString()}</span> in / <span class="highlight">${(usage.outputTokens ?? 0).toLocaleString()}</span> out${cache} · total <span class="highlight">${(state.totalInputTokens + state.totalOutputTokens).toLocaleString()}</span>`,
         );
+        // Surface running totals on the AI Gateway primitive card too.
+        out.push({
+          type: "primitive",
+          id: "gateway",
+          state: "active",
+          stat: `${(state.totalInputTokens + state.totalOutputTokens).toLocaleString()} tok`,
+        });
       }
+      log(
+        "workflow",
+        `✓ checkpoint persisted (reason: <span class="highlight">${escapeHtml(finishReason ?? "?")}</span>)`,
+      );
+      return out;
+    }
+
+    case "message.appended": {
+      // Stream the model's tokens as they arrive — feels alive in the log.
+      const delta = (evt.data?.messageDelta as string | undefined) ?? "";
+      if (!delta.trim()) return out;
+      log("gateway", `…${escapeHtml(delta.slice(0, 120))}`);
       return out;
     }
 
     case "message.completed": {
       const message = (evt.data?.message as string | null) ?? "";
       const finishReason = evt.data?.finishReason as string | undefined;
-      // Skip interim tool-call narration; only show terminal assistant text.
       if (finishReason && finishReason !== "stop") return out;
       if (message.trim()) {
-        log("info", escapeHtml(message.slice(0, 400)));
+        log(
+          "info",
+          `← agent: <span class="highlight">${escapeHtml(message.slice(0, 600))}</span>`,
+        );
+      }
+      return out;
+    }
+
+    case "reasoning.completed": {
+      const text = (evt.data?.reasoning as string | undefined) ?? "";
+      if (text.trim()) {
+        log("gateway", `reasoning: ${escapeHtml(text.slice(0, 200))}`);
       }
       return out;
     }
