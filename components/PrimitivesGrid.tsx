@@ -31,7 +31,10 @@ export function PrimitivesGrid({ states, stats }: Props) {
       }}
     >
       {PRIMITIVES.map((p) => {
-        const isActive = states[p.id] === "active";
+        const state = states[p.id];
+        const isActive = state === "active";
+        const isDone = state === "done";
+        const isLit = isActive || isDone;
         return (
           <div
             key={p.id}
@@ -40,10 +43,10 @@ export function PrimitivesGrid({ states, stats }: Props) {
               borderRadius: 8,
               background: "var(--surface2)",
               border: "1px solid var(--border)",
-              boxShadow: isActive
+              boxShadow: isLit
                 ? `0 0 0 1px ${p.color}, 0 0 14px -4px ${p.color}`
                 : "none",
-              opacity: isActive ? 1 : 0.55,
+              opacity: isLit ? 1 : 0.55,
               transition:
                 "opacity 200ms ease, box-shadow 200ms ease, transform 200ms ease",
             }}
@@ -64,7 +67,7 @@ export function PrimitivesGrid({ states, stats }: Props) {
                   height: 7,
                   borderRadius: 999,
                   background: p.color,
-                  boxShadow: isActive ? `0 0 6px ${p.color}` : "none",
+                  boxShadow: isLit ? `0 0 6px ${p.color}` : "none",
                   animation: isActive ? "pulse 1.5s ease-in-out infinite" : undefined,
                 }}
               />

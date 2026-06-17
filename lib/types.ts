@@ -15,7 +15,7 @@ export interface LogEntry {
 
 export type PrimitiveId = "workflow" | "sandbox" | "gateway" | "connect";
 
-export type PrimitiveState = "idle" | "active";
+export type PrimitiveState = "idle" | "active" | "done";
 
 export type StepName = "research" | "copy" | "v0 build" | "outreach";
 

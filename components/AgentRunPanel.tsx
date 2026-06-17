@@ -246,7 +246,7 @@ export function AgentRunPanel({
   return (
     <aside
       style={{
-        width: 380,
+        width: 440,
         flexShrink: 0,
         background: "var(--surface)",
         borderLeft: "1px solid var(--border)",
@@ -254,10 +254,11 @@ export function AgentRunPanel({
         flexDirection: "column",
         overflow: "hidden",
         position: "relative",
+        minHeight: 0,
       }}
     >
-      {/* Prompt area */}
-      <div style={{ padding: 14, borderBottom: "1px solid var(--border)" }}>
+      {/* Prompt area (fixed top) */}
+      <div style={{ padding: 14, borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div
           style={{
             fontFamily: "var(--font-mono)",
@@ -320,6 +321,11 @@ export function AgentRunPanel({
           )}
         </button>
       </div>
+
+      {/* Scrollable middle — everything from the workflow badge through the
+          drafts. Lets the sandbox terminal and v0 iframe coexist without
+          getting clipped on shorter viewports. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
 
       {/* Workflow run badge — concretely shows it's a Vercel Workflow run */}
       {runSessionId && (
@@ -446,10 +452,11 @@ export function AgentRunPanel({
           "outreach" step has something visible even without real tokens. */}
       <DraftCards outputs={outputs} />
 
-      {/* Outputs + status footer — log stream rendered outside this panel
-          (full-width bottom drawer in DemoApp). */}
-      <div style={{ flex: 1, minHeight: 0 }} />
-      <div style={{ padding: 12, fontFamily: "var(--font-mono)", fontSize: 11 }}>
+      </div>{/* end scrollable middle */}
+
+      {/* Outputs + status footer — pinned to the bottom. Log stream is the
+          full-width drawer below the file viewer. */}
+      <div style={{ padding: 12, fontFamily: "var(--font-mono)", fontSize: 11, flexShrink: 0, borderTop: "1px solid var(--border)" }}>
         {error && (
           <div
             style={{

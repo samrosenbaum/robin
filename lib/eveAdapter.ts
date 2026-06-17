@@ -247,10 +247,17 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
         out.push({ type: "step", step: meta.step, state: "done" });
       }
 
-      // Drop the primitive's "active" glow on result. (Workflow stays active
-      // for the whole run.)
+      // Transition primitive to "done" (lit but not pulsing) so prospects
+      // can see at run-end that every primitive was exercised. Workflow
+      // stays active for the whole run.
       if (meta.primitive !== "workflow") {
-        out.push({ type: "primitive", id: meta.primitive, state: "idle" });
+        const doneStat = doneStatFor(toolName, result.output);
+        out.push({
+          type: "primitive",
+          id: meta.primitive,
+          state: "done",
+          stat: doneStat,
+        });
       }
       // Clear the "now-running" file highlight for this tool.
       out.push({ type: "file-running", file: null });
@@ -347,6 +354,25 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
     }
   }
   return out;
+}
+
+function doneStatFor(toolName: string, output: unknown): string {
+  if (!output || typeof output !== "object") return "✓";
+  const o = output as Record<string, unknown>;
+  if (toolName === "build_landing_page") {
+    const lines = o.totalLines as number | undefined;
+    const elapsed = o.sandboxElapsedMs as number | undefined;
+    return `${lines ?? 0} lines · ${elapsed ? (elapsed / 1000).toFixed(1) + "s" : "✓"}`;
+  }
+  if (toolName === "post_to_slack") {
+    const posted = o.posted as boolean | undefined;
+    return posted ? "1/2 sent" : "1/2 draft";
+  }
+  if (toolName === "open_linear_ticket") {
+    const posted = o.posted as boolean | undefined;
+    return posted ? "2/2 sent" : "2/2 draft";
+  }
+  return "✓";
 }
 
 function tagForTool(toolName: string): LogTag {

@@ -17,6 +17,27 @@ const TAG_STYLES: Record<LogTag, { bg: string; fg: string }> = {
   info: { bg: "rgba(161,161,170,0.12)", fg: "var(--text2)" },
 };
 
+// Wrap raw URLs and markdown links `[label](url)` in clickable anchors.
+// The adapter already produces <span class="..."> tags that we keep
+// untouched; we only mutate text content outside existing tags.
+function linkify(html: string): string {
+  // Replace markdown links first so the URL inside doesn't get double-linkified.
+  let out = html.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    (_m, label: string, url: string) =>
+      `<a href="${escapeAttr(url)}" target="_blank" rel="noreferrer" class="loglink">${label}</a>`,
+  );
+  // Then any bare URL not already inside an href.
+  out = out.replace(/(^|[^"=>])(https?:\/\/[^\s<)]+)/g, (_m, pre: string, url: string) => {
+    return `${pre}<a href="${escapeAttr(url)}" target="_blank" rel="noreferrer" class="loglink">${url}</a>`;
+  });
+  return out;
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/"/g, "&quot;");
+}
+
 export function LogStream({ entries }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -76,7 +97,7 @@ export function LogStream({ entries }: Props) {
             </span>
             <span
               style={{ color: "var(--text2)", overflowWrap: "anywhere" }}
-              dangerouslySetInnerHTML={{ __html: e.msg }}
+              dangerouslySetInnerHTML={{ __html: linkify(e.msg) }}
             />
           </div>
         );

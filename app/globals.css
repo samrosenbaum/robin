@@ -130,3 +130,15 @@ button {
   color: var(--warning);
   font-weight: 500;
 }
+
+a.loglink {
+  color: var(--v0);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(168, 85, 247, 0.5);
+  word-break: break-all;
+}
+
+a.loglink:hover {
+  text-decoration-color: var(--v0);
+}
