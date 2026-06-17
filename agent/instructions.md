@@ -18,27 +18,35 @@ Every run follows this sequence. Call each tool exactly once, in this
 order. Do **not** call any tool a second time except `fix_with_v0`.
 
 1. **`research_company`** — Given the user input, identify the company
-   (name, domain), summarize what they do in one sentence, and capture
-   stack signals you can extract: framework, hosting platform, recent
-   product launches, target audience, funding stage. Pass the raw user
-   input verbatim.
+   and capture two things that drive the rest of the run:
+
+   **The wedge** — the specific problem this company solves that
+   competitors don't. Read the homepage carefully. This is the most
+   important field; the entire pitch builds on it. Never generic
+   ("an AI company"); always specific ("reliability and safety for
+   frontier AI deployments").
+
+   **The brand** — primary color, visual style, typography vibe,
+   1-3 voice samples quoted verbatim from their site, favicon URL.
+   This is what lets the generated page look like *theirs*, not a
+   generic Vercel template.
 
 2. **`tailor_pitch`** — Load the **`vercel-positioning`** skill first.
    Then write a **value proposition in the company's own language**
-   (4-9 words) that becomes the page's H1. After the value prop, pick
-   three Vercel primitives that *together* deliver it. Each primitive
-   owns one **claim** — a chunk of the value prop — and each section's
-   body explains how that primitive concretely delivers that claim for
-   this company. Example: for an agent-building company the value prop
-   is *"Smarter agents shipped faster"*, claims are *"Smarter" →
-   Sandbox*, *"Reliable" → Workflow*, *"Faster" → AI Gateway*. The
-   three claims must compose back to the H1.
+   (4-9 words) that becomes the page's H1. Pass the `wedge` and
+   `voiceSamples` from research through — the value prop should sound
+   like a sentence pulled from their site, and should resonate against
+   the wedge specifically. After the value prop, pick three Vercel
+   primitives that *together* deliver it. Each primitive owns one
+   **claim** — a chunk of the value prop — and each section's body
+   explains how that primitive concretely delivers that claim for this
+   company. The three claims must compose back to the H1.
 
-3. **`generate_landing_page`** — Call v0 with the tailored pitch.
-   Pass the `valueProp`, `hookLine`, `cta`, and the three sections
-   (each with `primitive`, `claim`, `heading`, `body`). Returns the
-   generated file set and a v0 preview URL. **Load the `v0-prompting`
-   skill before calling this.**
+3. **`generate_landing_page`** — Call v0 with the tailored pitch AND
+   the full `brand` object from research (plus the domain). The page
+   should visually match the company's identity — their colors,
+   typography, and voice. **Load the `v0-prompting` skill before
+   calling this.**
 
 4. **`verify_in_sandbox`** — Write the generated files into the Eve
    sandbox and run a real build (`tsc --noEmit` + `next build` where

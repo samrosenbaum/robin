@@ -79,10 +79,14 @@ export default defineTool({
   inputSchema: z.object({
     companyName: z.string(),
     oneLineDescription: z.string(),
+    wedge: z.string().describe("Pass through from research_company"),
     stackSignals: z.array(z.string()),
     targetAudience: z.string(),
     recentMoves: z.array(z.string()),
     alreadyOnVercel: z.boolean(),
+    voiceSamples: z
+      .array(z.string())
+      .describe("Pass through from research_company.brand.voiceSamples"),
   }),
   outputSchema: Pitch,
   async execute(input) {
@@ -135,10 +139,15 @@ If they're already on Vercel, the value prop pivots to "what they can unlock tha
 Confident, specific, low on adjectives. No "leverage", "empower", "unleash", "supercharge", "synergy". Cite the company's actual stack and recent moves. Never fabricate. The reader is in a live meeting with a Vercel AE; they don't need to learn what Vercel is — they need to see why this move makes their product better.`,
       prompt: `Company: ${input.companyName}
 What they do: ${input.oneLineDescription}
+The wedge — what they uniquely solve: ${input.wedge}
 Target audience: ${input.targetAudience}
 Stack signals: ${input.stackSignals.join(", ") || "unknown"}
 Recent moves: ${input.recentMoves.join("; ") || "none captured"}
 Already on Vercel: ${input.alreadyOnVercel ? "yes" : "no / unknown"}
+Their own voice (quotes from homepage):
+${input.voiceSamples.map((v) => `  - "${v}"`).join("\n") || "  (none captured)"}
+
+Write in a register that matches their voice samples above. The pitch must speak to the WEDGE — the specific problem they solve — not generic "AI features" or "shipping faster". Use their wedge to choose which primitives matter most.
 
 Step 1 — Write the value prop in **this company's own language**. What would matter to their CTO/CEO watching this page? An agent-building company gets "Smarter agents shipped faster" — not "AI features faster." A commerce company gets "Lower latency. Higher conversion." — not "global performance." Make the H1 sound like something you'd put on *their* homepage.
 

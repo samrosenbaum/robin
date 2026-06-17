@@ -36,6 +36,19 @@ export default defineTool({
       )
       .min(3)
       .max(3),
+    brand: z
+      .object({
+        primaryColor: z.string().optional(),
+        accentColors: z.array(z.string()).optional(),
+        visualStyle: z.string().optional(),
+        typographyVibe: z.string().optional(),
+        voiceSamples: z.array(z.string()).optional(),
+        logoUrl: z.string().optional(),
+        domain: z.string().optional(),
+      })
+      .describe(
+        "Pass through the brand object from research_company.brand plus the company's domain so v0 can match their visual identity.",
+      ),
   }),
   outputSchema: GenerateOutput,
   async execute(input) {
@@ -84,7 +97,38 @@ function buildV0Prompt(input: {
     heading: string;
     body: string;
   }[];
+  brand?: {
+    primaryColor?: string;
+    accentColors?: string[];
+    visualStyle?: string;
+    typographyVibe?: string;
+    voiceSamples?: string[];
+    logoUrl?: string;
+    domain?: string;
+  };
 }): string {
+  const brand = input.brand ?? {};
+  const brandBlock = [
+    `Style direction — make this look like a page ${input.companyName} would actually publish, not a generic Vercel template:`,
+    brand.primaryColor &&
+      `- Primary brand color: ${brand.primaryColor}. Use it for the CTA button and one accent (e.g. claim labels, border highlights).`,
+    brand.accentColors && brand.accentColors.length > 0
+      ? `- Secondary brand colors: ${brand.accentColors.join(", ")}. Use sparingly for the three claim labels so they visually distinguish.`
+      : null,
+    brand.visualStyle &&
+      `- Visual style to match: ${brand.visualStyle}.`,
+    brand.typographyVibe &&
+      `- Typography vibe: ${brand.typographyVibe}. Pick fonts that match — e.g. if it's "serif editorial", use a serif H1; if "monospace technical", use mono headings.`,
+    brand.voiceSamples && brand.voiceSamples.length > 0
+      ? `- Tone-of-voice reference (quotes from their actual site):\n${brand.voiceSamples.map((v) => `    "${v}"`).join("\n")}\n  Write button labels, footers, and any UI copy in a similar register.`
+      : null,
+    brand.logoUrl &&
+      `- Small logo image (top-left of the page header): <img src="${brand.logoUrl}" alt="${input.companyName} logo" width="24" height="24" />`,
+    brand.domain &&
+      `- Eyebrow text or footer should reference ${brand.domain}.`,
+  ]
+    .filter(Boolean)
+    .join("\n");
   const sectionsText = input.sections
     .map(
       (s, i) =>
@@ -113,13 +157,13 @@ ${sectionsText}
 LAYOUT INTENT:
 The reader should be able to look at the H1, then glance at the three claim labels on the columns and see them compose back into the H1. Each column's heading + body proves how that primitive delivers its claim.
 
-STYLE:
-- Dark theme (slate-950 / zinc-950 background, slate-50 / zinc-50 text)
-- Monospace headings (Geist Mono via font-mono)
+${brandBlock}
+
+LAYOUT BASELINE (apply only where brand direction doesn't override):
 - Tailwind utility classes only — no inline styles
 - shadcn/ui Button for CTA
-- Each column has a subtle accent dot or border in a different color to mark it
-- No gradient backgrounds, no hero illustration
+- Each column has a subtle accent dot or border so the three claims visually distinguish
+- No hero illustration; rely on type + color
 - The company name "${input.companyName}" must appear in the hero or as eyebrow text
 - Footer with a small "Built on Vercel · ${input.companyName}" line
 

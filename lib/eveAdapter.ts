@@ -423,13 +423,26 @@ function describeOutput(
   if (toolName === "research_company") {
     const name = o.companyName as string | undefined;
     const desc = o.oneLineDescription as string | undefined;
+    const wedge = o.wedge as string | undefined;
     const signals = (o.stackSignals as string[] | undefined) ?? [];
     const onVercel = o.alreadyOnVercel as boolean | undefined;
+    const brand = o.brand as
+      | {
+          primaryColor?: string;
+          visualStyle?: string;
+          voiceSamples?: string[];
+        }
+      | undefined;
     if (name) {
       logs.push(`identified <span class="highlight">${escapeHtml(name)}</span>`);
     }
     if (desc) {
       logs.push(`one-liner: ${escapeHtml(desc)}`);
+    }
+    if (wedge) {
+      logs.push(
+        `wedge: <span class="highlight">${escapeHtml(wedge)}</span>`,
+      );
     }
     if (signals.length) {
       logs.push(
@@ -439,6 +452,16 @@ function describeOutput(
     if (onVercel) {
       logs.push(
         `<span class="success">✓ already on Vercel — pitch will lean into deeper primitives</span>`,
+      );
+    }
+    if (brand?.primaryColor || brand?.visualStyle) {
+      logs.push(
+        `brand: <span class="highlight">${escapeHtml([brand.primaryColor, brand.visualStyle].filter(Boolean).join(" · "))}</span>`,
+      );
+    }
+    if (brand?.voiceSamples?.length) {
+      logs.push(
+        `voice: <span class="highlight">"${escapeHtml(brand.voiceSamples[0].slice(0, 100))}"</span>`,
       );
     }
   }
