@@ -204,6 +204,15 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
         if (tc.toolName === "verify_in_sandbox") {
           out.push({ type: "sandbox-start" });
         }
+        if (tc.toolName === "fix_with_v0") {
+          // fix_with_v0 means the previous verify failed and the model is
+          // re-generating. Mark the "generate" step as retried.
+          out.push({
+            type: "step-retry",
+            step: "generate",
+            reason: "verify failed — regenerating with v0",
+          });
+        }
         log(
           tagForTool(tc.toolName),
           `→ call <span class="highlight">${escapeHtml(meta.label)}</span>(${inputKeys.join(", ")})`,

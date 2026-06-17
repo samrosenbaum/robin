@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, Loader2 } from "lucide-react";
 import { PrimitivesGrid } from "./PrimitivesGrid";
 import { WorkflowSteps } from "./WorkflowSteps";
@@ -37,11 +37,56 @@ const MODELS = [
   },
 ];
 
-export function AgentRunPanel() {
+interface AgentRunPanelProps {
+  width: number;
+  onWidthChange: (w: number) => void;
+}
+
+const MIN_WIDTH = 340;
+const MAX_WIDTH = 720;
+
+export function AgentRunPanel({ width, onWidthChange }: AgentRunPanelProps) {
   const run = useRun();
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [model, setModel] = useState(MODELS[0].id);
   const running = run.runState === "running";
+
+  // Drag-to-resize the panel from its left edge.
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  const onMouseMove = useCallback(
+    (e: MouseEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const dx = drag.startX - e.clientX;
+      const next = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, drag.startW + dx));
+      onWidthChange(next);
+    },
+    [onWidthChange],
+  );
+
+  const onMouseUp = useCallback(() => {
+    dragRef.current = null;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  }, [onMouseMove]);
+
+  function onResizeStart(e: React.MouseEvent) {
+    dragRef.current = { startX: e.clientX, startW: width };
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [onMouseMove, onMouseUp]);
 
   function handleRun() {
     // Strip any existing directive the user typed manually, then prepend the
@@ -54,7 +99,7 @@ export function AgentRunPanel() {
   return (
     <aside
       style={{
-        width: 380,
+        width,
         flexShrink: 0,
         background: "var(--surface)",
         borderLeft: "1px solid var(--border)",
@@ -65,6 +110,20 @@ export function AgentRunPanel() {
         minHeight: 0,
       }}
     >
+      {/* Drag handle for resizing the panel. 6px wide on the left edge. */}
+      <div
+        onMouseDown={onResizeStart}
+        title="drag to resize"
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 6,
+          cursor: "ew-resize",
+          zIndex: 3,
+        }}
+      />
       <div
         style={{
           padding: 14,
@@ -210,11 +269,26 @@ export function AgentRunPanel() {
               color: "var(--text)",
               overflow: "hidden",
               textOverflow: "ellipsis",
+              flex: 1,
+              minWidth: 0,
             }}
             title={run.runSessionId}
           >
             {run.runSessionId}
           </span>
+          <a
+            href="https://vercel.com/v0-gtm-team/sam-eve-primitives/observability"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: "var(--workflow)",
+              textDecoration: "none",
+              fontSize: 10,
+              flexShrink: 0,
+            }}
+          >
+            observability ↗
+          </a>
         </div>
       )}
 
@@ -256,7 +330,11 @@ export function AgentRunPanel() {
             >
               Workflow
             </div>
-            <WorkflowSteps states={run.steps} />
+            <WorkflowSteps
+            states={run.steps}
+            retries={run.stepRetries}
+            streamCuts={run.streamCuts}
+          />
           </div>
         </div>
       </div>

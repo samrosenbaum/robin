@@ -86,6 +86,8 @@ export type RunEvent =
   | { type: "sandbox-result"; snapshot: SandboxSnapshot }
   | { type: "gateway-info"; modelId: string; agentName: string }
   | { type: "gateway-call"; call: GatewayCall }
+  | { type: "stream-cut"; atEventCount: number }
+  | { type: "step-retry"; step: StepName; reason: string }
   | { type: "output"; output: OutputCard }
   | { type: "done" }
   | { type: "error"; msg: string };

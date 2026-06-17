@@ -17,6 +17,7 @@ export function DemoApp() {
   const [openFiles, setOpenFiles] = useState<string[]>(["agent.ts"]);
   const [activeFile, setActiveFile] = useState<string>("agent.ts");
   const [centerView, setCenterView] = useState<CenterView>("visuals");
+  const [rightPanelWidth, setRightPanelWidth] = useState(420);
 
   const openFile = useCallback((filename: string) => {
     setOpenFiles((prev) =>
@@ -108,7 +109,10 @@ export function DemoApp() {
           </div>
           <LogDrawer />
         </div>
-        <AgentRunPanel />
+        <AgentRunPanel
+          width={rightPanelWidth}
+          onWidthChange={setRightPanelWidth}
+        />
       </div>
     </div>
   );

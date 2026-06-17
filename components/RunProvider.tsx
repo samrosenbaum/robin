@@ -69,6 +69,11 @@ export interface RunContextValue {
   modelId: string | null;
   gatewayCalls: GatewayCall[];
 
+  // Durability story — visible signals that Workflow caught a failure
+  // and the run continued.
+  streamCuts: { atEventCount: number; ts: string }[];
+  stepRetries: Record<StepName, number>;
+
   startRun: (prompt: string) => Promise<void>;
   reset: () => void;
 }
@@ -106,6 +111,16 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
   const [modelId, setModelId] = useState<string | null>(null);
   const [gatewayCalls, setGatewayCalls] = useState<GatewayCall[]>([]);
 
+  const [streamCuts, setStreamCuts] = useState<
+    { atEventCount: number; ts: string }[]
+  >([]);
+  const [stepRetries, setStepRetries] = useState<Record<StepName, number>>({
+    research: 0,
+    tailor: 0,
+    generate: 0,
+    verify: 0,
+  });
+
   const abortRef = useRef<AbortController | null>(null);
   const runStartRef = useRef<number | null>(null);
   const lastEventAtRef = useRef<number | null>(null);
@@ -126,6 +141,8 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
     setActiveMs(0);
     setModelId(null);
     setGatewayCalls([]);
+    setStreamCuts([]);
+    setStepRetries({ research: 0, tailor: 0, generate: 0, verify: 0 });
     runStartRef.current = null;
     lastEventAtRef.current = null;
   }, []);
@@ -179,6 +196,21 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
         return;
       case "gateway-call":
         setGatewayCalls((prev) => [...prev, evt.call]);
+        return;
+      case "stream-cut":
+        setStreamCuts((prev) => [
+          ...prev,
+          {
+            atEventCount: evt.atEventCount,
+            ts: new Date().toISOString().slice(11, 19),
+          },
+        ]);
+        return;
+      case "step-retry":
+        setStepRetries((prev) => ({
+          ...prev,
+          [evt.step]: (prev[evt.step] ?? 0) + 1,
+        }));
         return;
       case "output":
         setOutputs((prev) => [...prev, evt.output]);
@@ -293,9 +325,14 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
             {
               ts: hhmmss(adapter.state.start),
               tag: "workflow",
-              msg: `<span class="warn">stream cut — reconnecting at event ${adapter.state.eventCount}</span>`,
+              msg: `<span class="warn">⚡ function killed — Workflow resuming from event ${adapter.state.eventCount}</span>`,
             },
           ]);
+          // Also surface the cut visually on the WorkflowSteps timeline.
+          applyEvent({
+            type: "stream-cut",
+            atEventCount: adapter.state.eventCount,
+          });
           if (!receivedAny) await new Promise((r) => setTimeout(r, 800));
         }
         setRunState("done");
@@ -330,6 +367,8 @@ export function RunProvider({ children }: { children: React.ReactNode }) {
     activeMs,
     modelId,
     gatewayCalls,
+    streamCuts,
+    stepRetries,
     startRun,
     reset,
   };
