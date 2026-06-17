@@ -452,32 +452,16 @@ export function AgentRunPanel({
           "outreach" step has something visible even without real tokens. */}
       <DraftCards outputs={outputs} />
 
-      </div>{/* end scrollable middle */}
-
-      {/* Outputs + status footer — pinned to the bottom. Log stream is the
-          full-width drawer below the file viewer. */}
-      <div style={{ padding: 12, fontFamily: "var(--font-mono)", fontSize: 11, flexShrink: 0, borderTop: "1px solid var(--border)" }}>
-        {error && (
-          <div
-            style={{
-              padding: "6px 8px",
-              borderRadius: 4,
-              background: "rgba(239,68,68,0.12)",
-              color: "var(--danger)",
-              marginBottom: 8,
-              wordBreak: "break-word",
-            }}
-          >
-            error: {error}
-          </div>
-        )}
+        {/* Output pills — clickable links to the artifacts the agent
+            produced. Live inside the scrollable region so they don't get
+            clipped, but pinned right after the drafts. */}
         {outputs.length > 0 && (
           <div
             style={{
+              padding: "0 14px 14px",
               display: "flex",
               flexWrap: "wrap",
               gap: 6,
-              marginBottom: 8,
             }}
           >
             {outputs.map((o, i) => (
@@ -490,13 +474,14 @@ export function AgentRunPanel({
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  padding: "4px 8px",
+                  padding: "4px 10px",
                   borderRadius: 999,
                   background: "var(--surface2)",
                   border: "1px solid var(--border)",
                   color: "var(--text)",
                   textDecoration: "none",
                   fontSize: 11,
+                  fontFamily: "var(--font-mono)",
                 }}
               >
                 <span
@@ -513,12 +498,25 @@ export function AgentRunPanel({
             ))}
           </div>
         )}
-        <div style={{ color: "var(--text3)" }}>
-          {runState === "idle" && "demo controls"}
-          {runState === "running" && "live run"}
-          {runState === "done" && "run complete"}
+      </div>{/* end scrollable middle */}
+
+      {/* Error banner — only shown when something actually fails. */}
+      {error && (
+        <div
+          style={{
+            padding: "8px 14px",
+            background: "rgba(239,68,68,0.12)",
+            color: "var(--danger)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            borderTop: "1px solid var(--border)",
+            wordBreak: "break-word",
+            flexShrink: 0,
+          }}
+        >
+          error: {error}
         </div>
-      </div>
+      )}
     </aside>
   );
 }
