@@ -419,24 +419,31 @@ function describeOutput(
     }
   }
   if (toolName === "tailor_pitch") {
-    const headline = o.headline as string | undefined;
+    const valueProp = o.valueProp as
+      | { statement?: string; explanation?: string }
+      | undefined;
     const angle = o.migrationAngle as string | undefined;
     const outcome = o.primaryOutcome as string | undefined;
-    const sections = (o.sections as Array<{ primitive?: string }> | undefined) ?? [];
-    if (outcome) {
+    const sections = (o.sections as Array<{
+      primitive?: string;
+      claim?: string;
+    }> | undefined) ?? [];
+    if (valueProp?.statement) {
       logs.push(
-        `lead outcome: <span class="highlight">${escapeHtml(outcome.replace(/-/g, " "))}</span>`,
+        `value prop: <span class="highlight">"${escapeHtml(valueProp.statement)}"</span>`,
       );
     }
-    if (headline) {
+    if (outcome) {
       logs.push(
-        `headline: <span class="highlight">"${escapeHtml(headline)}"</span>`,
+        `category: <span class="highlight">${escapeHtml(outcome.replace(/-/g, " "))}</span>`,
       );
     }
     if (sections.length) {
-      const prims = sections.map((s) => s.primitive).filter(Boolean).join(" · ");
+      const map = sections
+        .map((s) => `${s.claim ?? "?"} → ${s.primitive ?? "?"}`)
+        .join(" · ");
       logs.push(
-        `pitching: <span class="highlight">${escapeHtml(prims)}</span> (${escapeHtml(angle ?? "?")})`,
+        `proof: <span class="highlight">${escapeHtml(map)}</span> (${escapeHtml(angle ?? "?")})`,
       );
     }
   }

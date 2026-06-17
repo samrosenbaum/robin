@@ -8,21 +8,36 @@ const PitchSection = z.object({
     .describe(
       'The specific Vercel primitive this section pitches — e.g. "AI Gateway", "Vercel Workflow", "Vercel Sandbox", "v0", "Fluid Compute"',
     ),
+  claim: z
+    .string()
+    .describe(
+      "The single word or 1-2 word chunk of the valueProp this section owns. E.g. if valueProp is 'Smarter agents shipped faster', claims might be 'Smarter', 'Reliable', 'Faster'. Together the three claims should map back to the valueProp.",
+    ),
   heading: z.string().describe("Section heading — 6 to 10 words"),
   body: z
     .string()
     .describe(
-      "60-90 words tying this primitive to the company's actual stack and what they do. Concrete, not abstract.",
+      "60-90 words. Open by stating *how* this primitive delivers the claim concretely (with their stack), then back it up with a specific capability. Never just list the primitive's features — always frame as 'because Sandbox does X, your agents get Y'.",
     ),
 });
 
 const Pitch = z.object({
-  headline: z.string().describe("≤ 12 words, names the company explicitly"),
-  subheadline: z.string().describe("One sentence, concrete benefit"),
+  valueProp: z.object({
+    statement: z
+      .string()
+      .describe(
+        "The single value-prop sentence in the company's own language. 4-9 words. This is the page's H1. Examples: 'Smarter agents shipped faster.' / 'Lower latency. Higher conversion.' / 'Compliant, observable, fast.'",
+      ),
+    explanation: z
+      .string()
+      .describe(
+        "One sentence (20-40 words) explaining what that means specifically for this company — references their product or stack.",
+      ),
+  }),
   hookLine: z
     .string()
     .describe(
-      "One short line that sets up the pitch — e.g. 'AI safety needs durable, observable infrastructure.'",
+      "One short line that sets up the pitch above the H1 — e.g. 'For AI-native teams.' or '${company}, on Vercel.'",
     ),
   cta: z.string().describe("≤ 4 words, verb-first"),
   primaryOutcome: z
@@ -35,19 +50,19 @@ const Pitch = z.object({
       "global-performance",
     ])
     .describe(
-      "The single business outcome the pitch is built around. Each section ties back to this outcome.",
+      "Internal taxonomy: the business outcome category this value prop falls under. Used for downstream routing.",
     ),
   outcomeRationale: z
     .string()
     .describe(
-      "One sentence on why this outcome is the right lead for this specific company — reference their stack or stage.",
+      "One sentence on why this value prop is the right lead for this specific company — reference their stack, stage, or product.",
     ),
   sections: z
     .array(PitchSection)
     .min(3)
     .max(3)
     .describe(
-      "Exactly three sections. Each names a Vercel primitive AND explicitly closes by stating how it advances the chosen primaryOutcome.",
+      "Exactly three sections. The three sections together should *deliver* the valueProp — each one owns a distinct chunk (its `claim`). Pick primitives such that the claims combine to support the value prop.",
     ),
   migrationAngle: z
     .enum(["already-on-vercel", "from-aws", "from-cloudflare", "greenfield"])
@@ -74,37 +89,50 @@ export default defineTool({
     const { object } = await generateObject({
       model: MODEL,
       schema: Pitch,
-      system: `You are a Vercel solutions engineer writing a custom landing page for a sales meeting. Your reader is technical but their decision-making lens is **business outcomes**, not primitives. The pitch leads with an outcome and uses the primitives as evidence.
+      system: `You are a Vercel solutions engineer writing a custom landing page for a sales meeting. The page leads with a **value prop in the company's own language**, then proves it with three Vercel primitives — each primitive owns a labeled chunk of the value prop.
 
-## Pick the lead outcome first
+## Structure the pitch like this
 
-The pitch is built around exactly ONE primary outcome that matters most for this specific company:
+1. **valueProp.statement** — the page's H1. The single promise to this specific company, said in 4-9 words in their language. Examples:
+   - For an agent-building company: "Smarter agents shipped faster."
+   - For a fintech: "Compliant. Observable. Fast."
+   - For a marketplace: "Lower latency. Higher conversion."
+   - For an AI infra company: "Production-grade AI, from prompt to user."
 
-- **ship-faster** — for teams whose competitive edge is iteration speed. Best for early-stage startups, design-led companies, anyone deploying weekly+.
-- **no-devops** — for teams that don't want a platform-engineer hire. Best for under-20-engineer startups, founder-led tech orgs.
-- **lower-infra-cost** — for teams with growing infra spend. Best for I/O-heavy AI workloads where Fluid Compute's active-CPU pricing dominates the savings.
-- **better-dx** — for teams whose engineering hiring/retention depends on stack quality. Best for tools companies, dev-facing products, Series A+ where talent matters.
-- **ai-features-faster** — for AI-native companies. Best when the company is shipping LLM features and competing on velocity of new model integrations.
-- **global-performance** — for content/commerce/consumer where p95 latency dollars are visible.
+2. **Three sections, each owning a labeled chunk of the value prop.** The chunks must compose back into the value prop. For "Smarter agents shipped faster":
+   - "Smarter" → Vercel Sandbox (because agents can safely run code → expanded capability)
+   - "Reliable" → Vercel Workflow (because durable sessions don't drop mid-run)
+   - "Shipped faster" → AI Gateway (because one API → no provider integration tax)
 
-## Then choose THREE primitives that support that outcome
+Each section's body opens by stating **how** the primitive delivers its claim concretely, citing the company's stack or product. Never list primitive features in the abstract — always "because this primitive does X, your agents/users/team get Y."
 
-Each section names a primitive AND closes with how it advances the chosen outcome. Don't pitch the primitive on its own — pitch what it lets the company *achieve*.
+## Pick the value prop first
 
-Primitives you can name:
-- AI Gateway — one API across providers, fallbacks, budgets, observable.
-- Vercel Sandbox — Firecracker microVMs for AI-generated/untrusted code.
-- Vercel Workflow — durable execution that survives function kills.
-- Fluid Compute — active-CPU pricing, in-function concurrency for I/O-heavy work.
-- v0 — text-to-component generation.
-- Vercel Functions — framework-defined serverless, the baseline.
-- Edge / CDN — global delivery, anycast, instant invalidation.
+Think about what would actually matter to this company's CTO/CEO/founder watching this page in a meeting:
+
+- **AI-native / agent builders** — "Smarter agents shipped faster" / "Production-grade AI, fast." Primitives: Sandbox + Workflow + Gateway.
+- **Dev tools** — "Better DX, faster ship" / "Tools your engineers actually want to use." Primitives: Functions + v0 + Preview URLs.
+- **Marketplaces/commerce** — "Lower latency. Higher conversion." Primitives: Edge + Fluid + ISR.
+- **Fintech/regulated** — "Compliant, observable, fast." Primitives: Workflow + Observability + Edge.
+- **AI-native + small team** — "Production AI without a platform team." Primitives: Functions + Gateway + Workflow.
+- **Bootstrapped / founder-led** — "Ship like a team twice your size." Primitives: Functions + v0 + Preview URLs.
+
+If they're already on Vercel, the value prop pivots to "what they can unlock that they aren't using yet." If on AWS, frame as the migration outcome.
+
+## Primitives you can name
+
+- **AI Gateway** — one API across providers, fallbacks, budgets, observable.
+- **Vercel Sandbox** — Firecracker microVMs for AI-generated/untrusted code.
+- **Vercel Workflow** — durable execution that survives function kills.
+- **Fluid Compute** — active-CPU pricing, in-function concurrency.
+- **v0** — text-to-component generation.
+- **Vercel Functions** — framework-defined serverless, the baseline.
+- **Edge / CDN** — global delivery, anycast, instant invalidation.
+- **Vercel Observability** — runs, traces, vitals built in.
 
 ## Voice
 
-Confident, specific, low on adjectives. No "leverage", "empower", "unleash", "supercharge", "synergy", "next-generation". Cite the company's actual stack and recent moves. Never fabricate.
-
-The reader is in a live meeting with a Vercel AE; they don't need to learn what Vercel is — they need to see why the move is good for *their* business.`,
+Confident, specific, low on adjectives. No "leverage", "empower", "unleash", "supercharge", "synergy". Cite the company's actual stack and recent moves. Never fabricate. The reader is in a live meeting with a Vercel AE; they don't need to learn what Vercel is — they need to see why this move makes their product better.`,
       prompt: `Company: ${input.companyName}
 What they do: ${input.oneLineDescription}
 Target audience: ${input.targetAudience}
@@ -112,14 +140,15 @@ Stack signals: ${input.stackSignals.join(", ") || "unknown"}
 Recent moves: ${input.recentMoves.join("; ") || "none captured"}
 Already on Vercel: ${input.alreadyOnVercel ? "yes" : "no / unknown"}
 
-Step 1 — Decide the single primaryOutcome that matters most for *this* company. Be opinionated. An AI-native Series B picks ai-features-faster or lower-infra-cost. A growth-stage SaaS picks ship-faster or better-dx. A content company picks global-performance. A bootstrapped 5-person startup picks no-devops.
+Step 1 — Write the value prop in **this company's own language**. What would matter to their CTO/CEO watching this page? An agent-building company gets "Smarter agents shipped faster" — not "AI features faster." A commerce company gets "Lower latency. Higher conversion." — not "global performance." Make the H1 sound like something you'd put on *their* homepage.
 
-Step 2 — Write a one-sentence outcomeRationale grounded in their actual stack or stage.
+Step 2 — Pick three primitives that *together* deliver that value prop. Each primitive owns one chunk of the H1 (the section's "claim"). The three claims should compose back into the value prop.
 
-Step 3 — Pick three primitives that each clearly advance that outcome. Each section closes by stating the outcome-advancement explicitly.
+Step 3 — Write each section's body so it opens with **how** the primitive concretely delivers its claim for this specific company (their stack, their product), then states the supporting capability.
 
-If alreadyOnVercel is true, frame as "go deeper into primitives you're not using yet."
-If alreadyOnVercel is false, frame as a migration story.
+Step 4 — Set primaryOutcome to the closest match in the taxonomy — this is internal categorization, not the surfaced copy.
+
+If alreadyOnVercel is true: frame as "deeper into the platform." If false: frame as the migration outcome they'd unlock.
 
 Produce the structured pitch.`,
     });

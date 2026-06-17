@@ -24,18 +24,21 @@ order. Do **not** call any tool a second time except `fix_with_v0`.
    input verbatim.
 
 2. **`tailor_pitch`** — Load the **`vercel-positioning`** skill first.
-   Then pick the single *business outcome* most relevant for this
-   company (ship-faster, no-devops, lower-infra-cost, better-dx,
-   ai-features-faster, or global-performance) and write a pitch
-   built around that outcome. Three sections, each naming a Vercel
-   primitive that advances the outcome — primitives are evidence, not
-   the lead. Be concrete: if they're already on Vercel, lean into
-   deeper primitives; if on AWS, frame as migration with the
-   outcome they'd unlock.
+   Then write a **value proposition in the company's own language**
+   (4-9 words) that becomes the page's H1. After the value prop, pick
+   three Vercel primitives that *together* deliver it. Each primitive
+   owns one **claim** — a chunk of the value prop — and each section's
+   body explains how that primitive concretely delivers that claim for
+   this company. Example: for an agent-building company the value prop
+   is *"Smarter agents shipped faster"*, claims are *"Smarter" →
+   Sandbox*, *"Reliable" → Workflow*, *"Faster" → AI Gateway*. The
+   three claims must compose back to the H1.
 
 3. **`generate_landing_page`** — Call v0 with the tailored pitch.
-   Returns the generated file set and a v0 preview URL. **Load the
-   `v0-prompting` skill before calling this.**
+   Pass the `valueProp`, `hookLine`, `cta`, and the three sections
+   (each with `primitive`, `claim`, `heading`, `body`). Returns the
+   generated file set and a v0 preview URL. **Load the `v0-prompting`
+   skill before calling this.**
 
 4. **`verify_in_sandbox`** — Write the generated files into the Eve
    sandbox and run a real build (`tsc --noEmit` + `next build` where
