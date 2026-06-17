@@ -1,5 +1,5 @@
 import { eveChannel } from "eve/channels/eve";
-import { localDev, placeholderAuth, vercelOidc } from "eve/channels/auth";
+import { localDev, none, vercelOidc } from "eve/channels/auth";
 
 export default eveChannel({
   auth: [
@@ -7,8 +7,8 @@ export default eveChannel({
     localDev(),
     // Lets the Eve TUI and Vercel deployments reach the deployed agent.
     vercelOidc(),
-    // Placeholder for browser requests in production — swap for Auth.js,
-    // Clerk, or `none()` for a public demo before going live.
-    placeholderAuth(),
+    // Public demo — Launch Intelligence has no per-user state. Swap for
+    // Auth.js / Clerk before this turns into a real product.
+    none(),
   ],
 });
