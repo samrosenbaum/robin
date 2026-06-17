@@ -3,33 +3,36 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV_LINKS = [
+const LINKS = [
   { href: "/", label: "Demo" },
   { href: "/harness", label: "Harness" },
   { href: "/infrastructure", label: "Infrastructure" },
 ];
 
-export function TopBar() {
+export function MarketingNav({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
   return (
     <header
       style={{
-        height: 44,
+        height: 56,
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        padding: "0 16px",
+        gap: 16,
+        padding: "0 24px",
         background: "var(--surface)",
         borderBottom: "1px solid var(--border)",
-        fontSize: 13,
+        fontFamily: "var(--font-sans)",
+        position: compact ? "sticky" : "relative",
+        top: 0,
+        zIndex: 10,
+        backdropFilter: "blur(8px)",
       }}
     >
-      {/* ▲ Logo + project name */}
       <Link
         href="/"
         style={{
-          display: "flex",
+          display: "inline-flex",
           alignItems: "center",
           gap: 8,
           color: "var(--text)",
@@ -42,8 +45,7 @@ export function TopBar() {
         <span
           style={{
             fontFamily: "var(--font-mono)",
-            fontSize: 12,
-            letterSpacing: 0.2,
+            fontSize: 13,
             color: "var(--text)",
           }}
         >
@@ -51,15 +53,15 @@ export function TopBar() {
         </span>
       </Link>
 
-      <nav style={{ display: "flex", gap: 4, marginLeft: 8 }}>
-        {NAV_LINKS.map((l) => {
+      <nav style={{ display: "flex", gap: 4, marginLeft: 12 }}>
+        {LINKS.map((l) => {
           const active = pathname === l.href;
           return (
             <Link
               key={l.href}
               href={l.href}
               style={{
-                padding: "5px 10px",
+                padding: "6px 12px",
                 borderRadius: 6,
                 fontFamily: "var(--font-mono)",
                 fontSize: 12,
@@ -77,16 +79,15 @@ export function TopBar() {
 
       <div style={{ flex: 1 }} />
 
-      {/* "Built with Eve" — clarifies Eve is the framework powering this app */}
       <a
-        href="https://vercel.com/docs/eve"
+        href="https://vercel.com/blog/introducing-eve"
         target="_blank"
         rel="noreferrer"
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          padding: "4px 10px",
+          padding: "5px 12px",
           borderRadius: 999,
           background: "var(--surface2)",
           border: "1px solid var(--border)",
@@ -96,36 +97,17 @@ export function TopBar() {
           textDecoration: "none",
         }}
       >
-        <span style={{ color: "var(--text3)" }}>built with</span>
-        <span style={{ color: "var(--text)" }}>eve</span>
-        <span style={{ color: "var(--text3)" }}>↗</span>
-      </a>
-
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "4px 10px",
-          borderRadius: 999,
-          background: "rgba(99, 102, 241, 0.15)",
-          border: "1px solid rgba(99, 102, 241, 0.35)",
-          color: "var(--text)",
-          fontSize: 11,
-          fontFamily: "var(--font-mono)",
-        }}
-      >
         <span
           style={{
             width: 6,
             height: 6,
             borderRadius: 999,
             background: "var(--workflow)",
-            boxShadow: "0 0 8px var(--workflow)",
+            boxShadow: "0 0 6px var(--workflow)",
           }}
         />
-        deployed
-      </div>
+        built with eve ↗
+      </a>
     </header>
   );
 }
