@@ -8,7 +8,6 @@ export type LogTag =
   | "info";
 
 export interface LogEntry {
-  index: number;
   ts: string;
   tag: LogTag;
   msg: string;
@@ -29,19 +28,11 @@ export type RunState =
   | "resuming"
   | "done";
 
-export interface LogEffect {
-  activatePrimitive?: PrimitiveId;
-  deactivatePrimitive?: PrimitiveId;
-  stepTransition?: { step: StepName; state: StepState };
-  primitiveStatUpdate?: { primitive: PrimitiveId; value: string };
-  openFile?: string;
-  showKillButton?: boolean;
-}
-
 export interface OutputCard {
   label: string;
   color: string;
   icon: string;
+  href?: string;
 }
 
 export interface TreeNode {
@@ -51,3 +42,19 @@ export interface TreeNode {
   id?: string;
   badge?: "M" | "active" | "new";
 }
+
+// ----- Streaming event protocol from /api/run -----
+
+export type RunEvent =
+  | { type: "log"; ts: string; tag: LogTag; msg: string }
+  | { type: "step"; step: StepName; state: StepState }
+  | {
+      type: "primitive";
+      id: PrimitiveId;
+      state: PrimitiveState;
+      stat?: string;
+    }
+  | { type: "file-open"; file: string }
+  | { type: "output"; output: OutputCard }
+  | { type: "done" }
+  | { type: "error"; msg: string };
