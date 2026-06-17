@@ -371,6 +371,18 @@ function EmptyState() {
           built with eve ↗
         </a>
 
+        <h1
+          style={{
+            margin: "0 0 12px",
+            fontSize: 28,
+            fontWeight: 600,
+            letterSpacing: -0.5,
+            color: "var(--text)",
+            lineHeight: 1.2,
+          }}
+        >
+          Agents are where the web was before frameworks.
+        </h1>
         <p
           style={{
             margin: 0,
@@ -380,17 +392,21 @@ function EmptyState() {
             maxWidth: 640,
           }}
         >
+          Everyone hand-rolls the same production plumbing — durable state,
+          sandboxed compute, OAuth tokens, model fallbacks, observability —
+          and nothing carries over to the next agent. Vercel ships those as
+          primitives so you build what your agent does, not how it runs.
+          This demo composes them via{" "}
           <a
-            href="https://vercel.com/docs/eve"
+            href="https://vercel.com/blog/introducing-eve"
             target="_blank"
             rel="noreferrer"
             style={{ color: "var(--text)", fontWeight: 500 }}
           >
             Eve
-          </a>{" "}
-          is Vercel&apos;s filesystem-first framework for durable AI agents.
-          Author the agent as files under <span style={mono}>agent/</span>,
-          deploy to Vercel, get this stack of primitives for free:
+          </a>
+          , Vercel&apos;s open-source agent framework — five files in a
+          Next.js repo, production-grade from day one.
         </p>
 
         <div
@@ -494,26 +510,31 @@ const PRIMITIVES = [
   {
     name: "Vercel Workflow",
     color: "var(--workflow)",
-    summary: "Persists session state and resumes interrupted work.",
+    summary:
+      "Durable execution. Every step is a checkpoint; sessions survive cold starts, redeploys, and long pauses.",
   },
   {
     name: "Vercel Sandbox",
     color: "var(--sandbox)",
-    summary: "Isolates code execution in ephemeral microVMs.",
+    summary:
+      "Sandboxed compute. AI-generated code runs in isolated microVMs, separated from your app runtime.",
   },
   {
     name: "AI Gateway",
     color: "var(--gateway)",
-    summary: "Routes model requests and handles provider fallbacks.",
+    summary:
+      "One model API across providers, with automatic fallbacks and cost tracking — no provider keys in code.",
   },
   {
     name: "Vercel Connect",
     color: "var(--connect)",
-    summary: "Manages OAuth tokens and API keys for external services.",
+    summary:
+      "Managed OAuth tokens and API keys for the external services the agent talks to.",
   },
   {
     name: "v0",
     color: "var(--v0)",
-    summary: "Generates the UI from a prompt; sandbox verifies the output.",
+    summary:
+      "Generate production UI from a prompt. The Sandbox builds and verifies the output before it ships.",
   },
 ];
