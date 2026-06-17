@@ -18,8 +18,13 @@ export default defineTool({
     chatUrl: z.string(),
     files: z.array(z.string()),
     totalLines: z.number(),
+    sandboxId: z.string(),
+    sandboxCommand: z.string(),
+    sandboxStdout: z.string(),
+    sandboxElapsedMs: z.number(),
   }),
   async execute(input, ctx) {
+    const t0 = Date.now();
     if (!process.env.V0_API_KEY) {
       throw new Error(
         "V0_API_KEY is not set. The build_landing_page tool needs a v0 API key.",
@@ -63,12 +68,12 @@ Return only the React component code.`;
       written.push(safeName);
     }
 
-    const wcResult = await sandbox.run({
-      command:
-        "find v0-out -type f -name '*.tsx' -o -name '*.ts' -o -name '*.css' | xargs wc -l 2>/dev/null | tail -n 1 || echo 0",
-    });
+    const sandboxCommand =
+      "find v0-out -type f \\( -name '*.tsx' -o -name '*.ts' -o -name '*.css' \\) | xargs wc -l 2>/dev/null | tail -n 1 || echo 0";
+    const wcResult = await sandbox.run({ command: sandboxCommand });
+    const sandboxStdout = (wcResult.stdout || "").trim();
     const totalLines = parseInt(
-      (wcResult.stdout || "0").trim().split(/\s+/)[0] || "0",
+      sandboxStdout.split(/\s+/)[0] || "0",
       10,
     );
 
@@ -77,6 +82,10 @@ Return only the React component code.`;
       chatUrl: chatResp.webUrl,
       files: written,
       totalLines: Number.isFinite(totalLines) ? totalLines : 0,
+      sandboxId: sandbox.id,
+      sandboxCommand,
+      sandboxStdout: sandboxStdout || "(no output)",
+      sandboxElapsedMs: Date.now() - t0,
     };
   },
 });

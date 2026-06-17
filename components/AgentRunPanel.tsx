@@ -9,11 +9,13 @@ import type {
   PrimitiveState,
   RunEvent,
   RunState,
+  SandboxSnapshot,
   StepName,
   StepState,
 } from "@/lib/types";
 import { PrimitivesGrid } from "./PrimitivesGrid";
 import { WorkflowSteps } from "./WorkflowSteps";
+import { SandboxTerminal } from "./SandboxTerminal";
 import { createAdapter } from "@/lib/eveAdapter";
 
 const DEFAULT_PROMPT =
@@ -62,6 +64,8 @@ export function AgentRunPanel({
   const [error, setError] = useState<string | null>(null);
   const [runSessionId, setRunSessionId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sandboxActive, setSandboxActive] = useState(false);
+  const [sandboxSnapshot, setSandboxSnapshot] = useState<SandboxSnapshot | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // logs count is what `useEffect` in LogStream needs to react to; keep
   // it locally referenced so the linter doesn't think `logs` is unused.
@@ -76,6 +80,8 @@ export function AgentRunPanel({
     setError(null);
     setRunSessionId(null);
     setPreviewUrl(null);
+    setSandboxActive(false);
+    setSandboxSnapshot(null);
   }
 
   async function startRun() {
@@ -212,6 +218,13 @@ export function AgentRunPanel({
         return;
       case "file-running":
         onFileRunning(evt.file);
+        return;
+      case "sandbox-start":
+        setSandboxActive(true);
+        setSandboxSnapshot(null);
+        return;
+      case "sandbox-result":
+        setSandboxSnapshot(evt.snapshot);
         return;
       case "output":
         setOutputs((prev) => [...prev, evt.output]);
@@ -358,6 +371,29 @@ export function AgentRunPanel({
           <WorkflowSteps states={steps} />
         </div>
       </div>
+
+      {/* Live Vercel Sandbox terminal — animates while build_landing_page
+          runs, then snaps to real sandbox id / files / wc -l output. */}
+      {(sandboxActive || sandboxSnapshot) && (
+        <div style={{ padding: "0 14px 14px" }}>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: 1,
+              color: "var(--text3)",
+              marginBottom: 6,
+              textTransform: "uppercase",
+            }}
+          >
+            vercel sandbox
+          </div>
+          <SandboxTerminal
+            active={sandboxActive}
+            snapshot={sandboxSnapshot}
+          />
+        </div>
+      )}
 
       {/* Live v0 preview — fills in once build_landing_page returns. */}
       {previewUrl && (

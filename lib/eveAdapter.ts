@@ -188,6 +188,9 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
         out.push({ type: "primitive", id: meta.primitive, state: "active" });
         out.push({ type: "file-open", file: meta.file });
         out.push({ type: "file-running", file: meta.file });
+        if (tc.toolName === "build_landing_page") {
+          out.push({ type: "sandbox-start" });
+        }
         log(
           tagForTool(tc.toolName),
           `→ call <span class="highlight">${escapeHtml(meta.label)}</span>(${inputKeys.join(", ")})`,
@@ -229,6 +232,9 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
       }
       for (const card of outputs.cards) {
         out.push({ type: "output", output: card });
+      }
+      if (outputs.sandbox) {
+        out.push({ type: "sandbox-result", snapshot: outputs.sandbox });
       }
 
       // Mark step done — but outreach needs both tools.
@@ -361,9 +367,14 @@ function tagForTool(toolName: string): LogTag {
 function describeOutput(
   toolName: string,
   output: unknown,
-): { logs: string[]; cards: OutputCard[] } {
+): {
+  logs: string[];
+  cards: OutputCard[];
+  sandbox?: import("./types").SandboxSnapshot;
+} {
   const logs: string[] = [];
   const cards: OutputCard[] = [];
+  let sandbox: import("./types").SandboxSnapshot | undefined;
   if (!output || typeof output !== "object")
     return { logs: [`<span class="success">✓ ${toolName} returned</span>`], cards };
   const o = output as Record<string, unknown>;
@@ -388,10 +399,29 @@ function describeOutput(
   if (toolName === "build_landing_page") {
     const preview = o.previewUrl as string | undefined;
     const lines = o.totalLines as number | undefined;
-    if (lines)
+    const sbId = o.sandboxId as string | undefined;
+    const sbCmd = o.sandboxCommand as string | undefined;
+    const sbStdout = o.sandboxStdout as string | undefined;
+    const elapsed = o.sandboxElapsedMs as number | undefined;
+    const files = (o.files as string[] | undefined) ?? [];
+
+    if (sbId) {
+      logs.push(
+        `sandbox <span class="highlight">${escapeHtml(sbId.slice(0, 16))}</span> · ${files.length} files written · <span class="success">${lines ?? 0} lines</span> · ${elapsed ? (elapsed / 1000).toFixed(1) + "s" : ""}`,
+      );
+      sandbox = {
+        id: sbId,
+        command: sbCmd ?? "",
+        stdout: sbStdout ?? "",
+        files,
+        totalLines: lines ?? 0,
+        elapsedMs: elapsed ?? 0,
+      };
+    } else if (lines) {
       logs.push(
         `stdout: <span class="success">✓ component generated (${lines} lines)</span>`,
       );
+    }
     if (preview) {
       logs.push(
         `Deploying preview → <span class="success">${escapeHtml(preview.replace(/^https?:\/\//, ""))}</span>`,
@@ -447,7 +477,7 @@ function describeOutput(
   }
   if (logs.length === 0)
     logs.push(`<span class="success">✓ ${toolName} returned</span>`);
-  return { logs, cards };
+  return { logs, cards, sandbox };
 }
 
 function getStr(
