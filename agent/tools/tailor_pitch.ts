@@ -71,7 +71,7 @@ const Pitch = z.object({
     ),
 });
 
-const MODEL = "anthropic/claude-sonnet-4.6";
+const DEFAULT_MODEL = "anthropic/claude-sonnet-4.6";
 
 export default defineTool({
   description:
@@ -87,11 +87,17 @@ export default defineTool({
     voiceSamples: z
       .array(z.string())
       .describe("Pass through from research_company.brand.voiceSamples"),
+    model: z
+      .string()
+      .optional()
+      .describe(
+        'Optional gateway model string. Defaults to Sonnet 4.6. Pass through from the user-message [model: ...] directive when present.',
+      ),
   }),
   outputSchema: Pitch,
   async execute(input) {
     const { object } = await generateObject({
-      model: MODEL,
+      model: input.model || DEFAULT_MODEL,
       schema: Pitch,
       system: `You are a Vercel solutions engineer writing a custom landing page for a sales meeting. The page leads with a **value prop in the company's own language**, then proves it with three Vercel primitives — each primitive owns a labeled chunk of the value prop.
 

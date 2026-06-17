@@ -56,18 +56,25 @@ const ResearchOutput = z.object({
   }),
 });
 
-const MODEL = "anthropic/claude-sonnet-4.6";
+const DEFAULT_MODEL = "anthropic/claude-sonnet-4.6";
 
 export default defineTool({
   description:
-    "Identify a company from a user-supplied name, domain, or URL. Fetch their homepage if accessible and extract stack signals (framework, hosting, recent moves, target audience). Call first.",
+    "Identify a company from a user-supplied name, domain, or URL. Fetch their homepage if accessible and extract stack signals (framework, hosting, recent moves, target audience). Call first. Pass the `model` field through if the user message includes one.",
   inputSchema: z.object({
     userInput: z
       .string()
       .describe("The raw input from the AE — a domain, URL, or company name."),
+    model: z
+      .string()
+      .optional()
+      .describe(
+        'Optional gateway model string to use for this call — e.g. "anthropic/claude-sonnet-4.6", "google/gemini-2.5-pro", "openai/gpt-5". Defaults to Sonnet 4.6.',
+      ),
   }),
   outputSchema: ResearchOutput,
-  async execute({ userInput }) {
+  async execute({ userInput, model }) {
+    const useModel = model || DEFAULT_MODEL;
     // Try to fetch the homepage for stack + brand signals if input looks
     // like a URL.
     const url = inferUrl(userInput);
@@ -144,7 +151,7 @@ export default defineTool({
     }
 
     const { object } = await generateObject({
-      model: MODEL,
+      model: useModel,
       schema: ResearchOutput,
       system: `You are a competitive-intelligence analyst preparing a one-page brief for a Vercel sales meeting. Two jobs:
 

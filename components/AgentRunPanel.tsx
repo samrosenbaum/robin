@@ -10,10 +10,46 @@ import { useRun } from "./RunProvider";
 
 const DEFAULT_PROMPT = "anthropic.com";
 
+const MODELS = [
+  {
+    id: "anthropic/claude-sonnet-4.6",
+    label: "Claude Sonnet 4.6",
+    provider: "anthropic",
+    note: "Best for nuanced voice matching",
+  },
+  {
+    id: "google/gemini-2.5-pro",
+    label: "Gemini 2.5 Pro",
+    provider: "google",
+    note: "Cheaper, fast, 2M context",
+  },
+  {
+    id: "openai/gpt-5",
+    label: "GPT-5",
+    provider: "openai",
+    note: "Strong all-around",
+  },
+  {
+    id: "anthropic/claude-haiku-4-5",
+    label: "Claude Haiku 4.5",
+    provider: "anthropic",
+    note: "Cheapest, fastest",
+  },
+];
+
 export function AgentRunPanel() {
   const run = useRun();
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [model, setModel] = useState(MODELS[0].id);
   const running = run.runState === "running";
+
+  function handleRun() {
+    // Strip any existing directive the user typed manually, then prepend the
+    // selected model so the agent's instructions can route to it.
+    const cleaned = prompt.replace(/^\s*\[model:\s*[^\]]+\]\s*/, "").trim();
+    const wrapped = `[model: ${model}] ${cleaned}`;
+    run.startRun(wrapped);
+  }
 
   return (
     <aside
@@ -67,36 +103,89 @@ export function AgentRunPanel() {
             outline: "none",
           }}
         />
-        <button
-          onClick={() => run.startRun(prompt)}
-          disabled={running}
+        <div
           style={{
             marginTop: 10,
-            width: "100%",
-            padding: "8px 12px",
-            borderRadius: 6,
-            background: running ? "var(--surface2)" : "var(--workflow)",
-            color: running ? "var(--text2)" : "var(--text)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 12,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            cursor: running ? "default" : "pointer",
-            transition: "background 150ms ease",
+            display: "flex",
+            alignItems: "stretch",
+            gap: 6,
           }}
         >
-          {running ? (
-            <>
-              <Loader2 size={13} className="animate-spin" /> running…
-            </>
-          ) : (
-            <>
-              <Play size={12} /> Run agent
-            </>
-          )}
-        </button>
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            disabled={running}
+            style={{
+              flex: "0 0 140px",
+              padding: "8px 6px 8px 10px",
+              background: "var(--bg)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              outline: "none",
+              cursor: running ? "default" : "pointer",
+              appearance: "none",
+            }}
+            title={MODELS.find((m) => m.id === model)?.note ?? ""}
+          >
+            {MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleRun}
+            disabled={running}
+            style={{
+              flex: 1,
+              padding: "8px 12px",
+              borderRadius: 6,
+              background: running ? "var(--surface2)" : "var(--workflow)",
+              color: running ? "var(--text2)" : "var(--text)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              cursor: running ? "default" : "pointer",
+              transition: "background 150ms ease",
+            }}
+          >
+            {running ? (
+              <>
+                <Loader2 size={13} className="animate-spin" /> running…
+              </>
+            ) : (
+              <>
+                <Play size={12} /> Run
+              </>
+            )}
+          </button>
+        </div>
+        <div
+          style={{
+            marginTop: 6,
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "var(--text3)",
+            lineHeight: 1.4,
+          }}
+        >
+          {MODELS.find((m) => m.id === model)?.note} · same agent, swap
+          providers via{" "}
+          <a
+            href="https://vercel.com/ai-gateway"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "var(--gateway)", textDecoration: "none" }}
+          >
+            AI Gateway
+          </a>
+        </div>
       </div>
 
       {run.runSessionId && (
