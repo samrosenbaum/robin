@@ -12,6 +12,7 @@ import type { LogEntry } from "@/lib/types";
 export function DemoApp() {
   const [openFiles, setOpenFiles] = useState<string[]>(["agent.ts"]);
   const [activeFile, setActiveFile] = useState<string>("agent.ts");
+  const [runningFile, setRunningFile] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [logExpanded, setLogExpanded] = useState(true);
 
@@ -51,7 +52,11 @@ export function DemoApp() {
           minHeight: 0,
         }}
       >
-        <FileTree activeFile={activeFile} onFileOpen={openFile} />
+        <FileTree
+          activeFile={activeFile}
+          runningFile={runningFile}
+          onFileOpen={openFile}
+        />
         <div
           style={{
             flex: 1,
@@ -76,6 +81,7 @@ export function DemoApp() {
         </div>
         <AgentRunPanel
           onAutoOpenFile={openFile}
+          onFileRunning={setRunningFile}
           logs={logs}
           setLogs={setLogs}
         />

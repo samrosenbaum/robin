@@ -33,6 +33,12 @@ export interface OutputCard {
   color: string;
   icon: string;
   href?: string;
+  // Optional rich payload for full draft rendering (post_to_slack /
+  // open_linear_ticket).
+  draftKind?: "slack" | "linear";
+  draftTitle?: string;
+  draftBody?: string;
+  draftMeta?: string;
 }
 
 export interface TreeNode {
@@ -55,6 +61,7 @@ export type RunEvent =
       stat?: string;
     }
   | { type: "file-open"; file: string }
+  | { type: "file-running"; file: string | null }
   | { type: "output"; output: OutputCard }
   | { type: "done" }
   | { type: "error"; msg: string };

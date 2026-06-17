@@ -37,10 +37,11 @@ const ALL_FOLDER_IDS = TREE.filter((n) => n.type === "folder").map(
 
 interface Props {
   activeFile: string;
+  runningFile?: string | null;
   onFileOpen: (filename: string) => void;
 }
 
-export function FileTree({ activeFile, onFileOpen }: Props) {
+export function FileTree({ activeFile, runningFile, onFileOpen }: Props) {
   const [openFolders, setOpenFolders] = useState<Set<string>>(
     () => new Set(ALL_FOLDER_IDS),
   );
@@ -98,6 +99,7 @@ export function FileTree({ activeFile, onFileOpen }: Props) {
         const isFolder = node.type === "folder";
         const isOpen = isFolder && openFolders.has(node.id!);
         const isActive = !isFolder && node.name === activeFile;
+        const isRunning = !isFolder && node.name === runningFile;
 
         return (
           <button
@@ -113,22 +115,33 @@ export function FileTree({ activeFile, onFileOpen }: Props) {
               padding: "3px 10px 3px 0",
               paddingLeft: 8 + node.depth * 14,
               textAlign: "left",
-              color: isActive ? "var(--text)" : "var(--text2)",
-              background: isActive ? "rgba(99,102,241,0.08)" : "transparent",
-              borderLeft: isActive
-                ? "2px solid var(--workflow)"
-                : "2px solid transparent",
+              color: isRunning
+                ? "var(--text)"
+                : isActive
+                  ? "var(--text)"
+                  : "var(--text2)",
+              background: isRunning
+                ? "rgba(34,197,94,0.10)"
+                : isActive
+                  ? "rgba(99,102,241,0.08)"
+                  : "transparent",
+              borderLeft: isRunning
+                ? "2px solid var(--success)"
+                : isActive
+                  ? "2px solid var(--workflow)"
+                  : "2px solid transparent",
               transition: "background 120ms ease, color 120ms ease",
               fontFamily: "var(--font-mono)",
               fontSize: 12,
               lineHeight: 1.6,
             }}
             onMouseEnter={(e) => {
-              if (!isActive)
+              if (!isActive && !isRunning)
                 e.currentTarget.style.background = "rgba(255,255,255,0.03)";
             }}
             onMouseLeave={(e) => {
-              if (!isActive) e.currentTarget.style.background = "transparent";
+              if (!isActive && !isRunning)
+                e.currentTarget.style.background = "transparent";
             }}
           >
             {isFolder ? (
@@ -157,9 +170,26 @@ export function FileTree({ activeFile, onFileOpen }: Props) {
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
               {node.name}
+              {isRunning && (
+                <span
+                  aria-label="running"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: "var(--success)",
+                    boxShadow: "0 0 6px var(--success)",
+                    animation: "pulse 1.2s ease-in-out infinite",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
             </span>
             {node.badge && <Badge kind={node.badge} />}
           </button>

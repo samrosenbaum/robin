@@ -21,6 +21,9 @@ interface ToolMeta {
   label: string; // human display name used in log lines
 }
 
+// Maps each tool the agent might call → the step / primitive / left-tree
+// file we want to highlight. File names match entries in
+// lib/fileContents.ts (the illustrative files shown in the viewer).
 const TOOL_MAP: Record<string, ToolMeta> = {
   research: {
     step: "research",
@@ -37,19 +40,19 @@ const TOOL_MAP: Record<string, ToolMeta> = {
   build_landing_page: {
     step: "v0 build",
     primitive: "sandbox",
-    file: "build_landing_page.ts",
+    file: "v0-builder.ts",
     label: "build_landing_page",
   },
   post_to_slack: {
     step: "outreach",
     primitive: "connect",
-    file: "post_to_slack.ts",
+    file: "slack.ts",
     label: "post_to_slack",
   },
   open_linear_ticket: {
     step: "outreach",
     primitive: "connect",
-    file: "open_linear_ticket.ts",
+    file: "linear.ts",
     label: "open_linear_ticket",
   },
 };
@@ -184,6 +187,7 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
         out.push({ type: "step", step: meta.step, state: "running" });
         out.push({ type: "primitive", id: meta.primitive, state: "active" });
         out.push({ type: "file-open", file: meta.file });
+        out.push({ type: "file-running", file: meta.file });
         log(
           tagForTool(tc.toolName),
           `→ call <span class="highlight">${escapeHtml(meta.label)}</span>(${inputKeys.join(", ")})`,
@@ -242,6 +246,8 @@ function handleEvent(raw: unknown, state: AdapterState): RunEvent[] {
       if (meta.primitive !== "workflow") {
         out.push({ type: "primitive", id: meta.primitive, state: "idle" });
       }
+      // Clear the "now-running" file highlight for this tool.
+      out.push({ type: "file-running", file: null });
       return out;
     }
 
@@ -401,30 +407,42 @@ function describeOutput(
   if (toolName === "post_to_slack") {
     const channel = (o.channel as string | undefined) ?? "#launches";
     const posted = o.posted as boolean | undefined;
+    const preview = (o.preview as string | undefined) ?? "";
     logs.push(
       posted
         ? `Slack draft posted → <span class="highlight">${escapeHtml(channel)}</span>`
-        : `Slack draft prepared → <span class="highlight">${escapeHtml(channel)}</span> (no token configured)`,
+        : `Slack draft prepared → <span class="highlight">${escapeHtml(channel)}</span> <span class="warn">(no SLACK_BOT_TOKEN — preview only)</span>`,
     );
     cards.push({
       label: `Slack draft ${channel}`,
       color: "var(--success)",
       icon: "→",
+      draftKind: "slack",
+      draftTitle: channel,
+      draftBody: preview,
+      draftMeta: posted ? "posted" : "preview only",
     });
   }
   if (toolName === "open_linear_ticket") {
     const id = o.identifier as string | undefined;
     const url = o.url as string | undefined;
+    const previewObj = o.preview as
+      | { title?: string; description?: string }
+      | undefined;
     logs.push(
       id
         ? `Linear ticket opened → <span class="highlight">${escapeHtml(id)}</span>`
-        : `Linear ticket drafted (no API key configured)`,
+        : `Linear ticket drafted <span class="warn">(no LINEAR_API_KEY — preview only)</span>`,
     );
     cards.push({
       label: id ? `Linear ${id}` : "Linear draft",
       color: "var(--connect)",
       icon: "→",
       href: url,
+      draftKind: "linear",
+      draftTitle: previewObj?.title ?? "Review landing page",
+      draftBody: previewObj?.description ?? "",
+      draftMeta: id ?? "preview only",
     });
   }
   if (logs.length === 0)

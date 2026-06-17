@@ -42,11 +42,17 @@ const INITIAL_STATS: Record<PrimitiveId, string> = {
 
 interface Props {
   onAutoOpenFile: (file: string) => void;
+  onFileRunning: (file: string | null) => void;
   logs: LogEntry[];
   setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
 }
 
-export function AgentRunPanel({ onAutoOpenFile, logs, setLogs }: Props) {
+export function AgentRunPanel({
+  onAutoOpenFile,
+  onFileRunning,
+  logs,
+  setLogs,
+}: Props) {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [runState, setRunState] = useState<RunState>("idle");
   const [steps, setSteps] = useState(INITIAL_STEPS);
@@ -203,6 +209,9 @@ export function AgentRunPanel({ onAutoOpenFile, logs, setLogs }: Props) {
         return;
       case "file-open":
         onAutoOpenFile(evt.file);
+        return;
+      case "file-running":
+        onFileRunning(evt.file);
         return;
       case "output":
         setOutputs((prev) => [...prev, evt.output]);
@@ -397,6 +406,10 @@ export function AgentRunPanel({ onAutoOpenFile, logs, setLogs }: Props) {
         </div>
       )}
 
+      {/* Outreach drafts — render Slack + Linear in their native style so the
+          "outreach" step has something visible even without real tokens. */}
+      <DraftCards outputs={outputs} />
+
       {/* Outputs + status footer — log stream rendered outside this panel
           (full-width bottom drawer in DemoApp). */}
       <div style={{ flex: 1, minHeight: 0 }} />
@@ -464,5 +477,133 @@ export function AgentRunPanel({ onAutoOpenFile, logs, setLogs }: Props) {
         </div>
       </div>
     </aside>
+  );
+}
+
+function DraftCards({ outputs }: { outputs: OutputCard[] }) {
+  const slack = outputs.find((o) => o.draftKind === "slack");
+  const linear = outputs.find((o) => o.draftKind === "linear");
+  if (!slack && !linear) return null;
+  return (
+    <div
+      style={{
+        padding: "0 14px 14px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      {slack && (
+        <div
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            background: "var(--surface2)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: "6px 10px",
+              background: "rgba(34,197,94,0.10)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: 0.8,
+              color: "var(--text2)",
+              textTransform: "uppercase",
+            }}
+          >
+            <span>slack · {slack.draftTitle}</span>
+            <span style={{ color: "var(--text3)" }}>{slack.draftMeta}</span>
+          </div>
+          <pre
+            style={{
+              margin: 0,
+              padding: "8px 10px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              lineHeight: 1.55,
+              color: "var(--text2)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {slack.draftBody}
+          </pre>
+        </div>
+      )}
+      {linear && (
+        <div
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            background: "var(--surface2)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: "6px 10px",
+              background: "rgba(59,130,246,0.10)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: 0.8,
+              color: "var(--text2)",
+              textTransform: "uppercase",
+            }}
+          >
+            <span>linear · {linear.draftMeta}</span>
+            {linear.href && (
+              <a
+                href={linear.href}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: "var(--connect)",
+                  textDecoration: "none",
+                  textTransform: "none",
+                  letterSpacing: 0,
+                  fontSize: 11,
+                }}
+              >
+                open ↗
+              </a>
+            )}
+          </div>
+          <div
+            style={{
+              padding: "8px 10px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              color: "var(--text)",
+              fontWeight: 500,
+              marginBottom: 4,
+            }}
+          >
+            {linear.draftTitle}
+          </div>
+          <pre
+            style={{
+              margin: 0,
+              padding: "0 10px 10px",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              lineHeight: 1.55,
+              color: "var(--text2)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {linear.draftBody}
+          </pre>
+        </div>
+      )}
+    </div>
   );
 }
