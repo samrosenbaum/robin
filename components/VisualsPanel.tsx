@@ -330,18 +330,20 @@ function EmptyState() {
         minHeight: 0,
         overflowY: "auto",
         background: "var(--bg)",
-        padding: "48px 32px",
+        padding: "56px 32px",
       }}
     >
       <div
         style={{
-          maxWidth: 760,
+          maxWidth: 720,
           margin: "0 auto",
           fontFamily: "var(--font-sans)",
-          color: "var(--text)",
         }}
       >
-        <div
+        <a
+          href="https://vercel.com/docs/eve"
+          target="_blank"
+          rel="noreferrer"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -353,7 +355,8 @@ function EmptyState() {
             color: "var(--text2)",
             fontFamily: "var(--font-mono)",
             fontSize: 11,
-            marginBottom: 16,
+            textDecoration: "none",
+            marginBottom: 14,
           }}
         >
           <span
@@ -365,58 +368,18 @@ function EmptyState() {
               boxShadow: "0 0 6px var(--workflow)",
             }}
           />
-          built with eve
-        </div>
+          built with eve ↗
+        </a>
 
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 30,
-            fontWeight: 600,
-            letterSpacing: -0.5,
-            color: "var(--text)",
-          }}
-        >
-          Launch Intelligence
-        </h1>
         <p
           style={{
-            margin: "10px 0 0",
+            margin: 0,
             color: "var(--text2)",
             fontSize: 15,
-            lineHeight: 1.6,
+            lineHeight: 1.65,
             maxWidth: 640,
           }}
         >
-          An autonomous launch agent — give it a brief, it ships the launch:
-          competitor research, copy, a v0-built landing page, and outreach
-          drafts for Slack and Linear.
-        </p>
-
-        <div
-          style={{
-            marginTop: 28,
-            padding: "16px 18px",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            background: "var(--surface)",
-            color: "var(--text2)",
-            fontSize: 14,
-            lineHeight: 1.65,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              color: "var(--text3)",
-              marginBottom: 8,
-            }}
-          >
-            what is eve?
-          </div>
           <a
             href="https://vercel.com/docs/eve"
             target="_blank"
@@ -425,40 +388,25 @@ function EmptyState() {
           >
             Eve
           </a>{" "}
-          is Vercel&apos;s filesystem-first framework for durable backend AI
-          agents. You author the agent under <code style={mono}>agent/</code> —
-          one file per tool, one file per channel, a markdown file for the
-          system prompt. Eve discovers, validates, compiles, and serves the
-          runtime on Vercel Functions with first-class observability.
-        </div>
+          is Vercel&apos;s filesystem-first framework for durable AI agents.
+          Author the agent as files under <span style={mono}>agent/</span>,
+          deploy to Vercel, get this stack of primitives for free:
+        </p>
 
         <div
           style={{
-            marginTop: 28,
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            color: "var(--text3)",
-            marginBottom: 12,
-          }}
-        >
-          the primitives this agent composes
-        </div>
-
-        <div
-          style={{
+            marginTop: 22,
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 12,
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 10,
           }}
         >
           {PRIMITIVES.map((p) => (
             <div
               key={p.name}
               style={{
-                padding: "14px 16px",
-                borderRadius: 10,
+                padding: "12px 14px",
+                borderRadius: 8,
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
                 position: "relative",
@@ -479,7 +427,7 @@ function EmptyState() {
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  marginBottom: 6,
+                  marginBottom: 4,
                 }}
               >
                 <span
@@ -494,7 +442,7 @@ function EmptyState() {
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",
-                    fontSize: 13,
+                    fontSize: 12,
                     color: "var(--text)",
                   }}
                 >
@@ -505,8 +453,8 @@ function EmptyState() {
                 style={{
                   position: "relative",
                   margin: 0,
-                  fontSize: 13,
-                  lineHeight: 1.55,
+                  fontSize: 12.5,
+                  lineHeight: 1.5,
                   color: "var(--text2)",
                 }}
               >
@@ -516,25 +464,18 @@ function EmptyState() {
           ))}
         </div>
 
-        <div
+        <p
           style={{
-            marginTop: 32,
-            padding: "14px 16px",
-            borderRadius: 10,
-            background: "rgba(99,102,241,0.07)",
-            border: "1px solid rgba(99,102,241,0.25)",
-            color: "var(--text)",
-            fontSize: 14,
+            marginTop: 24,
+            color: "var(--text3)",
+            fontSize: 13,
             lineHeight: 1.55,
           }}
         >
-          <strong>Try it:</strong> edit the prompt on the right (tailor it for
-          whichever company you&apos;re demoing) and hit{" "}
-          <span style={mono}>Run agent</span>. The sandbox, v0 preview, and
-          outreach drafts appear here in real time. Switch to{" "}
-          <span style={mono}>Code</span> in the header to inspect the agent
-          source.
-        </div>
+          Edit the prompt on the right and hit{" "}
+          <span style={mono}>Run agent</span>. Tailor it for whichever
+          company you&apos;re demoing — every run is fully content-driven.
+        </p>
       </div>
     </div>
   );
@@ -553,31 +494,26 @@ const PRIMITIVES = [
   {
     name: "Vercel Workflow",
     color: "var(--workflow)",
-    summary:
-      "Persists session state and resumes interrupted work. Every step is a durable checkpoint — sessions survive cold starts, redeploys, and long pauses. The wrun_* ID you see in the right panel is a real Workflow run.",
+    summary: "Persists session state and resumes interrupted work.",
   },
   {
     name: "Vercel Sandbox",
     color: "var(--sandbox)",
-    summary:
-      "Isolates code execution in ephemeral Firecracker microVMs. The v0-generated landing page gets written into a sandbox /workspace and verified there before anything touches your infra.",
+    summary: "Isolates code execution in ephemeral microVMs.",
   },
   {
     name: "AI Gateway",
     color: "var(--gateway)",
-    summary:
-      "Routes model requests through Vercel's gateway — single API key, provider fallbacks, observable. The agent talks to claude-sonnet-4.6 via gateway model strings, no provider creds in code.",
+    summary: "Routes model requests and handles provider fallbacks.",
   },
   {
     name: "Vercel Connect",
     color: "var(--connect)",
-    summary:
-      "Manages OAuth tokens and API keys for external services. Slack and Linear posting flows would resolve their tokens at runtime via Connect — no long-lived secrets stored in env vars.",
+    summary: "Manages OAuth tokens and API keys for external services.",
   },
   {
     name: "v0",
     color: "var(--v0)",
-    summary:
-      "Generates the landing-page component from the copy brief. The chat returns code, the sandbox verifies it, and the demoUrl gets embedded in the preview iframe right here.",
+    summary: "Generates the UI from a prompt; sandbox verifies the output.",
   },
 ];
