@@ -17,7 +17,7 @@ export type PrimitiveId = "workflow" | "sandbox" | "gateway" | "connect";
 
 export type PrimitiveState = "idle" | "active";
 
-export type StepName = "research" | "brief" | "copy" | "v0 build" | "outreach";
+export type StepName = "research" | "copy" | "v0 build" | "outreach";
 
 export type StepState = "pending" | "running" | "done" | "interrupted";
 

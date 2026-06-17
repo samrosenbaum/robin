@@ -15,13 +15,13 @@ import type {
 import { PrimitivesGrid } from "./PrimitivesGrid";
 import { WorkflowSteps } from "./WorkflowSteps";
 import { LogStream } from "./LogStream";
+import { createAdapter } from "@/lib/eveAdapter";
 
 const DEFAULT_PROMPT =
   "Ship the v2 pricing page — tie it to our Series B announcement, target CTO/VP Eng personas";
 
 const INITIAL_STEPS: Record<StepName, StepState> = {
   research: "pending",
-  brief: "pending",
   copy: "pending",
   "v0 build": "pending",
   outreach: "pending",
@@ -72,21 +72,41 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
     abortRef.current = ac;
 
     try {
-      const res = await fetch("/api/run", {
+      // 1) Start a durable Eve session.
+      const startRes = await fetch("/eve/v1/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ message: prompt }),
         signal: ac.signal,
       });
-      if (!res.ok || !res.body) {
-        throw new Error(`run failed: ${res.status}`);
+      if (!startRes.ok) {
+        throw new Error(
+          `eve session create failed: ${startRes.status} ${await startRes.text().catch(() => "")}`,
+        );
+      }
+      const sessionId =
+        startRes.headers.get("x-eve-session-id") ??
+        ((await startRes
+          .clone()
+          .json()
+          .catch(() => ({}))) as { sessionId?: string }).sessionId;
+      if (!sessionId) throw new Error("no x-eve-session-id returned");
+
+      // 2) Attach to the NDJSON event stream.
+      const streamRes = await fetch(`/eve/v1/session/${sessionId}/stream`, {
+        signal: ac.signal,
+      });
+      if (!streamRes.ok || !streamRes.body) {
+        throw new Error(`eve session stream failed: ${streamRes.status}`);
       }
 
-      const reader = res.body.getReader();
+      const adapter = createAdapter();
+      const reader = streamRes.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let finished = false;
 
-      while (true) {
+      while (!finished) {
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -95,11 +115,15 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
           const line = buffer.slice(0, nl).trim();
           buffer = buffer.slice(nl + 1);
           if (!line) continue;
+          let parsed: unknown;
           try {
-            const evt = JSON.parse(line) as RunEvent;
-            applyEvent(evt);
+            parsed = JSON.parse(line);
           } catch {
-            // ignore malformed line
+            continue;
+          }
+          for (const ev of adapter.handle(parsed)) {
+            applyEvent(ev);
+            if (ev.type === "done") finished = true;
           }
         }
       }

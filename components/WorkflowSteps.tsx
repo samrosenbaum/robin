@@ -3,7 +3,7 @@
 import { Check, Zap } from "lucide-react";
 import type { StepName, StepState } from "@/lib/types";
 
-const STEPS: StepName[] = ["research", "brief", "copy", "v0 build", "outreach"];
+const STEPS: StepName[] = ["research", "copy", "v0 build", "outreach"];
 
 interface Props {
   states: Record<StepName, StepState>;
