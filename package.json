@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "eve build",
     "start": "next start"
   },
   "dependencies": {
