@@ -15,7 +15,6 @@ import type {
 } from "@/lib/types";
 import { PrimitivesGrid } from "./PrimitivesGrid";
 import { WorkflowSteps } from "./WorkflowSteps";
-import { SandboxTerminal } from "./SandboxTerminal";
 import { createAdapter } from "@/lib/eveAdapter";
 
 const DEFAULT_PROMPT =
@@ -47,6 +46,17 @@ interface Props {
   onFileRunning: (file: string | null) => void;
   logs: LogEntry[];
   setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
+  // Visual artifacts lifted to DemoApp so the center panel can render them.
+  sandboxActive: boolean;
+  setSandboxActive: React.Dispatch<React.SetStateAction<boolean>>;
+  sandboxSnapshot: SandboxSnapshot | null;
+  setSandboxSnapshot: React.Dispatch<
+    React.SetStateAction<SandboxSnapshot | null>
+  >;
+  previewUrl: string | null;
+  setPreviewUrl: React.Dispatch<React.SetStateAction<string | null>>;
+  outputs: OutputCard[];
+  setOutputs: React.Dispatch<React.SetStateAction<OutputCard[]>>;
 }
 
 export function AgentRunPanel({
@@ -54,22 +64,28 @@ export function AgentRunPanel({
   onFileRunning,
   logs,
   setLogs,
+  sandboxActive: _sandboxActive,
+  setSandboxActive,
+  sandboxSnapshot: _sandboxSnapshot,
+  setSandboxSnapshot,
+  previewUrl: _previewUrl,
+  setPreviewUrl,
+  outputs,
+  setOutputs,
 }: Props) {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [runState, setRunState] = useState<RunState>("idle");
   const [steps, setSteps] = useState(INITIAL_STEPS);
   const [prims, setPrims] = useState(INITIAL_PRIMS);
   const [stats, setStats] = useState(INITIAL_STATS);
-  const [outputs, setOutputs] = useState<OutputCard[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [runSessionId, setRunSessionId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [sandboxActive, setSandboxActive] = useState(false);
-  const [sandboxSnapshot, setSandboxSnapshot] = useState<SandboxSnapshot | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // logs count is what `useEffect` in LogStream needs to react to; keep
-  // it locally referenced so the linter doesn't think `logs` is unused.
   void logs;
+  void _sandboxActive;
+  void _sandboxSnapshot;
+  void _previewUrl;
+  void outputs;
 
   function reset() {
     setLogs([]);
@@ -246,7 +262,7 @@ export function AgentRunPanel({
   return (
     <aside
       style={{
-        width: 440,
+        width: 380,
         flexShrink: 0,
         background: "var(--surface)",
         borderLeft: "1px solid var(--border)",
@@ -378,126 +394,6 @@ export function AgentRunPanel({
         </div>
       </div>
 
-      {/* Live Vercel Sandbox terminal — animates while build_landing_page
-          runs, then snaps to real sandbox id / files / wc -l output. */}
-      {(sandboxActive || sandboxSnapshot) && (
-        <div style={{ padding: "0 14px 14px" }}>
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: 1,
-              color: "var(--text3)",
-              marginBottom: 6,
-              textTransform: "uppercase",
-            }}
-          >
-            vercel sandbox
-          </div>
-          <SandboxTerminal
-            active={sandboxActive}
-            snapshot={sandboxSnapshot}
-          />
-        </div>
-      )}
-
-      {/* Live v0 preview — fills in once build_landing_page returns. */}
-      {previewUrl && (
-        <div style={{ padding: "0 14px 14px" }}>
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: 1,
-              color: "var(--text3)",
-              marginBottom: 6,
-              textTransform: "uppercase",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            v0 preview
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                color: "var(--v0)",
-                textDecoration: "none",
-                fontSize: 11,
-                textTransform: "none",
-                letterSpacing: 0,
-              }}
-            >
-              open ↗
-            </a>
-          </div>
-          <iframe
-            src={previewUrl}
-            title="v0 preview"
-            style={{
-              width: "100%",
-              height: 240,
-              border: "1px solid var(--border)",
-              borderRadius: 6,
-              background: "white",
-            }}
-            sandbox="allow-scripts allow-same-origin allow-forms"
-          />
-        </div>
-      )}
-
-      {/* Outreach drafts — render Slack + Linear in their native style so the
-          "outreach" step has something visible even without real tokens. */}
-      <DraftCards outputs={outputs} />
-
-        {/* Output pills — clickable links to the artifacts the agent
-            produced. Live inside the scrollable region so they don't get
-            clipped, but pinned right after the drafts. */}
-        {outputs.length > 0 && (
-          <div
-            style={{
-              padding: "0 14px 14px",
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 6,
-            }}
-          >
-            {outputs.map((o, i) => (
-              <a
-                key={i}
-                href={o.href ?? "#"}
-                target={o.href ? "_blank" : undefined}
-                rel="noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 10px",
-                  borderRadius: 999,
-                  background: "var(--surface2)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)",
-                  textDecoration: "none",
-                  fontSize: 11,
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: 999,
-                    background: o.color,
-                  }}
-                />
-                {o.label}
-                <span style={{ color: "var(--text3)" }}>{o.icon}</span>
-              </a>
-            ))}
-          </div>
-        )}
       </div>{/* end scrollable middle */}
 
       {/* Error banner — only shown when something actually fails. */}
@@ -518,133 +414,5 @@ export function AgentRunPanel({
         </div>
       )}
     </aside>
-  );
-}
-
-function DraftCards({ outputs }: { outputs: OutputCard[] }) {
-  const slack = outputs.find((o) => o.draftKind === "slack");
-  const linear = outputs.find((o) => o.draftKind === "linear");
-  if (!slack && !linear) return null;
-  return (
-    <div
-      style={{
-        padding: "0 14px 14px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
-    >
-      {slack && (
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            background: "var(--surface2)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "6px 10px",
-              background: "rgba(34,197,94,0.10)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: 0.8,
-              color: "var(--text2)",
-              textTransform: "uppercase",
-            }}
-          >
-            <span>slack · {slack.draftTitle}</span>
-            <span style={{ color: "var(--text3)" }}>{slack.draftMeta}</span>
-          </div>
-          <pre
-            style={{
-              margin: 0,
-              padding: "8px 10px",
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              lineHeight: 1.55,
-              color: "var(--text2)",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-            }}
-          >
-            {slack.draftBody}
-          </pre>
-        </div>
-      )}
-      {linear && (
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            background: "var(--surface2)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              padding: "6px 10px",
-              background: "rgba(59,130,246,0.10)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: 0.8,
-              color: "var(--text2)",
-              textTransform: "uppercase",
-            }}
-          >
-            <span>linear · {linear.draftMeta}</span>
-            {linear.href && (
-              <a
-                href={linear.href}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  color: "var(--connect)",
-                  textDecoration: "none",
-                  textTransform: "none",
-                  letterSpacing: 0,
-                  fontSize: 11,
-                }}
-              >
-                open ↗
-              </a>
-            )}
-          </div>
-          <div
-            style={{
-              padding: "8px 10px",
-              fontFamily: "var(--font-mono)",
-              fontSize: 12,
-              color: "var(--text)",
-              fontWeight: 500,
-              marginBottom: 4,
-            }}
-          >
-            {linear.draftTitle}
-          </div>
-          <pre
-            style={{
-              margin: 0,
-              padding: "0 10px 10px",
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              lineHeight: 1.55,
-              color: "var(--text2)",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-            }}
-          >
-            {linear.draftBody}
-          </pre>
-        </div>
-      )}
-    </div>
   );
 }

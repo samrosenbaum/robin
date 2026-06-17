@@ -1,26 +1,40 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Eye, Code2 } from "lucide-react";
 import { TopBar } from "./TopBar";
 import { FileTree } from "./FileTree";
 import { FileViewer } from "./FileViewer";
 import { AgentRunPanel } from "./AgentRunPanel";
 import { LogStream } from "./LogStream";
-import type { LogEntry } from "@/lib/types";
+import { VisualsPanel } from "./VisualsPanel";
+import type { LogEntry, OutputCard, SandboxSnapshot } from "@/lib/types";
+
+type CenterView = "visuals" | "code";
 
 export function DemoApp() {
   const [openFiles, setOpenFiles] = useState<string[]>(["agent.ts"]);
   const [activeFile, setActiveFile] = useState<string>("agent.ts");
   const [runningFile, setRunningFile] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [logExpanded, setLogExpanded] = useState(true);
+  const [centerView, setCenterView] = useState<CenterView>("visuals");
+
+  // Visual artifacts lifted up from AgentRunPanel so the center can render them.
+  const [sandboxActive, setSandboxActive] = useState(false);
+  const [sandboxSnapshot, setSandboxSnapshot] = useState<SandboxSnapshot | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [outputs, setOutputs] = useState<OutputCard[]>([]);
 
   function openFile(filename: string) {
     setOpenFiles((prev) =>
       prev.includes(filename) ? prev : [...prev, filename],
     );
     setActiveFile(filename);
+    // Auto-switch to code view when a file opens during a run, so the
+    // running-file indicator + opened tab are visible.
+    if (centerView !== "code") {
+      // Stay on visuals — the file tree highlight is enough signal.
+    }
   }
 
   function closeFile(filename: string) {
@@ -66,39 +80,171 @@ export function DemoApp() {
             minHeight: 0,
           }}
         >
-          <FileViewer
-            openFiles={openFiles}
-            activeFile={activeFile}
-            onTabClick={setActiveFile}
-            onTabClose={closeFile}
-          />
-          {/* Full-width "agent activity" log drawer below the file viewer */}
-          <LogDrawer
-            entries={logs}
-            expanded={logExpanded}
-            onToggle={() => setLogExpanded((v) => !v)}
-          />
+          <CenterHeader view={centerView} onChange={setCenterView} />
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {centerView === "visuals" ? (
+              <VisualsPanel
+                sandboxActive={sandboxActive}
+                sandboxSnapshot={sandboxSnapshot}
+                previewUrl={previewUrl}
+                outputs={outputs}
+              />
+            ) : (
+              <FileViewer
+                openFiles={openFiles}
+                activeFile={activeFile}
+                onTabClick={setActiveFile}
+                onTabClose={closeFile}
+              />
+            )}
+          </div>
+          <LogDrawer entries={logs} />
         </div>
         <AgentRunPanel
           onAutoOpenFile={openFile}
           onFileRunning={setRunningFile}
           logs={logs}
           setLogs={setLogs}
+          sandboxActive={sandboxActive}
+          setSandboxActive={setSandboxActive}
+          sandboxSnapshot={sandboxSnapshot}
+          setSandboxSnapshot={setSandboxSnapshot}
+          previewUrl={previewUrl}
+          setPreviewUrl={setPreviewUrl}
+          outputs={outputs}
+          setOutputs={setOutputs}
         />
       </div>
     </div>
   );
 }
 
-function LogDrawer({
-  entries,
-  expanded,
-  onToggle,
+function CenterHeader({
+  view,
+  onChange,
 }: {
-  entries: LogEntry[];
-  expanded: boolean;
-  onToggle: () => void;
+  view: CenterView;
+  onChange: (v: CenterView) => void;
 }) {
+  return (
+    <div
+      style={{
+        height: 36,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "stretch",
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
+        fontFamily: "var(--font-mono)",
+        fontSize: 12,
+        padding: "0 8px",
+      }}
+    >
+      <ViewTab
+        active={view === "visuals"}
+        onClick={() => onChange("visuals")}
+        icon={<Eye size={12} />}
+        label="Visuals"
+      />
+      <ViewTab
+        active={view === "code"}
+        onClick={() => onChange("code")}
+        icon={<Code2 size={12} />}
+        label="Code"
+      />
+    </div>
+  );
+}
+
+function ViewTab({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "0 14px",
+        color: active ? "var(--text)" : "var(--text3)",
+        borderBottom: active
+          ? "2px solid var(--workflow)"
+          : "2px solid transparent",
+        background: active ? "var(--bg)" : "transparent",
+        fontFamily: "var(--font-mono)",
+        fontSize: 12,
+        cursor: "pointer",
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+const MIN_DRAWER_H = 60;
+const COLLAPSED_DRAWER_H = 32;
+
+function LogDrawer({ entries }: { entries: LogEntry[] }) {
+  const [expanded, setExpanded] = useState(true);
+  const [height, setHeight] = useState(() =>
+    typeof window === "undefined"
+      ? 400
+      : Math.round(window.innerHeight * 0.45),
+  );
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
+
+  const onMouseMove = useCallback((e: MouseEvent) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dy = drag.startY - e.clientY;
+    const next = Math.max(
+      MIN_DRAWER_H,
+      Math.min(window.innerHeight - 200, drag.startH + dy),
+    );
+    setHeight(next);
+  }, []);
+
+  const onMouseUp = useCallback(() => {
+    dragRef.current = null;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  }, [onMouseMove]);
+
+  function onMouseDown(e: React.MouseEvent) {
+    if (!expanded) return;
+    dragRef.current = { startY: e.clientY, startH: height };
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [onMouseMove, onMouseUp]);
+
   return (
     <div
       style={{
@@ -107,16 +253,33 @@ function LogDrawer({
         flexDirection: "column",
         background: "var(--surface)",
         borderTop: "1px solid var(--border)",
-        height: expanded ? "45vh" : 30,
-        transition: "height 200ms ease",
+        height: expanded ? height : COLLAPSED_DRAWER_H,
+        transition: dragRef.current ? "none" : "height 200ms ease",
         overflow: "hidden",
+        position: "relative",
       }}
     >
+      {/* Drag handle — invisible 6px strip on top edge */}
+      {expanded && (
+        <div
+          onMouseDown={onMouseDown}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 6,
+            cursor: "ns-resize",
+            zIndex: 2,
+          }}
+          title="drag to resize"
+        />
+      )}
       <button
-        onClick={onToggle}
+        onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         style={{
-          height: 30,
+          height: COLLAPSED_DRAWER_H,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
@@ -146,6 +309,11 @@ function LogDrawer({
             }}
           >
             {entries.length} events
+            {expanded && (
+              <span style={{ marginLeft: 12, color: "var(--text3)" }}>
+                · drag top edge to resize
+              </span>
+            )}
           </span>
         )}
       </button>
