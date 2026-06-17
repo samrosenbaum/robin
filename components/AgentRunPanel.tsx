@@ -14,7 +14,6 @@ import type {
 } from "@/lib/types";
 import { PrimitivesGrid } from "./PrimitivesGrid";
 import { WorkflowSteps } from "./WorkflowSteps";
-import { LogStream } from "./LogStream";
 import { createAdapter } from "@/lib/eveAdapter";
 
 const DEFAULT_PROMPT =
@@ -43,12 +42,13 @@ const INITIAL_STATS: Record<PrimitiveId, string> = {
 
 interface Props {
   onAutoOpenFile: (file: string) => void;
+  logs: LogEntry[];
+  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
 }
 
-export function AgentRunPanel({ onAutoOpenFile }: Props) {
+export function AgentRunPanel({ onAutoOpenFile, logs, setLogs }: Props) {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [runState, setRunState] = useState<RunState>("idle");
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [steps, setSteps] = useState(INITIAL_STEPS);
   const [prims, setPrims] = useState(INITIAL_PRIMS);
   const [stats, setStats] = useState(INITIAL_STATS);
@@ -57,6 +57,9 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
   const [runSessionId, setRunSessionId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // logs count is what `useEffect` in LogStream needs to react to; keep
+  // it locally referenced so the linter doesn't think `logs` is unused.
+  void logs;
 
   function reset() {
     setLogs([]);
@@ -394,10 +397,9 @@ export function AgentRunPanel({ onAutoOpenFile }: Props) {
         </div>
       )}
 
-      {/* Log stream — flexes to fill */}
-      <LogStream entries={logs} />
-
-      {/* Outputs + status footer */}
+      {/* Outputs + status footer — log stream rendered outside this panel
+          (full-width bottom drawer in DemoApp). */}
+      <div style={{ flex: 1, minHeight: 0 }} />
       <div style={{ padding: 12, fontFamily: "var(--font-mono)", fontSize: 11 }}>
         {error && (
           <div

@@ -29,13 +29,12 @@ export function LogStream({ entries }: Props) {
       style={{
         flex: 1,
         minHeight: 0,
+        width: "100%",
         overflowY: "auto",
-        padding: "8px 12px",
+        padding: "10px 16px",
         background: "var(--bg)",
-        borderTop: "1px solid var(--border)",
-        borderBottom: "1px solid var(--border)",
         fontFamily: "var(--font-mono)",
-        fontSize: 11.5,
+        fontSize: 12.5,
         lineHeight: 1.6,
       }}
     >
